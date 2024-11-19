@@ -1,0 +1,9 @@
+requests==2.32.3
+pydantic==2.7.4
+pydantic_core==2.18.4
+annotated-types==0.7.0
+pyodbc
+fastapi 
+uvicorn 
+jinja2
+python-multipart

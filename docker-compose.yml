@@ -1,0 +1,51 @@
+name:
+  database_services_stack
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server
+    container_name: mssql
+    environment:
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q 'SELECT name FROM sys.databases'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  init:
+    build:
+      context: .
+      dockerfile: Dockerfile-init
+    container_name: init
+    environment:
+      DB_SERVER: "mssql"
+      DB_USER: "sa"
+      DB_PASSWORD: "YourStrong!Passw0rd"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api
+    environment:
+      DB_SERVER: "mssql"
+      DB_NAME: "JamStation"
+      DB_USER: "sa"
+      DB_PASSWORD: "YourStrong!Passw0rd"
+    ports:
+      - "8000:8000"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+
+volumes:
+  mssql-data:
+    driver: local

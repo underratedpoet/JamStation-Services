@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JamStudio - Репетиционные точки</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <link type="image/png" sizes="16x16" rel="icon" href="/static/icons8-music-band-16.png">
+</head>
+<body>
+    <h1>Наши репетиционные точки</h1>
+    <div class="container">
+        {% for location in locations %}
+            <a href="/rooms/{{ location.id }}">{{ location.name }}</a>
+        {% endfor %}
+    </div>
+</body>
+</html>
