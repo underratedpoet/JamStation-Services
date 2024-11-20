@@ -124,7 +124,7 @@ class DBController:
         try:
 
             # Генерация строки EXEC с плейсхолдерами для параметров
-            exec_query = f"EXEC CheckEmployeePassword {login}, {password};"
+            exec_query = f"EXEC CheckEmployeePassword N'{login}', N'{password}';"
 
             # Выполняем запрос
             self.cursor.execute(exec_query)
