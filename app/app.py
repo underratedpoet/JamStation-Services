@@ -138,6 +138,14 @@ class MainWindow(QMainWindow):
         self.table_selector = QComboBox(self.tab1)
         self.table_selector.currentIndexChanged.connect(self.table_changed)
 
+        # Над таблицей, в layout вкладки tab1:
+        #self.filters = QLineEdit(self.tab1)
+        #self.filters.setPlaceholderText("Введите фильтры через запятую (пример: col1=val1, col2=val2)")
+        #self.search_button = QPushButton("Найти", self.tab1)
+        #self.search_button.clicked.connect(self.apply_filters)
+
+
+
         # Таблица
         self.table = QTableWidget(self.tab1)
         self.table.setColumnCount(0)
@@ -181,6 +189,8 @@ class MainWindow(QMainWindow):
         navigation_layout.addWidget(self.prev_button)
         navigation_layout.addWidget(self.next_button)
 
+        #layout.insertWidget(2, self.filters)  # Вставляем над таблицей
+        #layout.insertWidget(3, self.search_button)
         layout.addLayout(table_controls_layout)
         layout.addWidget(self.table)
         layout.addWidget(self.no_data_label)
@@ -262,6 +272,30 @@ class MainWindow(QMainWindow):
         self.current_offset += self.limit
         self.load_data()
 
+    def apply_filters(self):
+        """Применить фильтры к запросу"""
+        filters_text = self.filters.text().strip()
+        if filters_text:
+            try:
+                conditions = []
+                for condition in filters_text.split(","):
+                    key, value = condition.split("=")
+                    key, value = key.strip(), value.strip()
+                    if value.isdigit():
+                        conditions.append(f"{key} = {value}")
+                    else:
+                        conditions.append(f"{key} LIKE '%{value}%'")
+                self.current_filters = " AND ".join(conditions)
+            except ValueError:
+                QMessageBox.warning(self, "Ошибка", "Неправильный формат фильтров. Используйте col=val.")
+                return
+        else:
+            self.current_filters = ""
+
+        self.current_offset = 0
+        self.load_data()
+
+
     def selection_changed(self):
         """Показываем кнопку удаления при выделении строки"""
         if self.table.currentItem():
@@ -281,18 +315,18 @@ class MainWindow(QMainWindow):
         if not self.current_table:
             QMessageBox.warning(self, "Ошибка", "Выберите таблицу для добавления записи.")
             return
-    
+
         # Получение списка колонок таблицы из базы данных
         try:
             columns = self.db_controller.get_table_columns(self.current_table)
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось получить список колонок: {e}")
             return
-    
+
         if not columns:
             QMessageBox.warning(self, "Ошибка", "Таблица не содержит колонок.")
             return
-    
+
         # Открытие диалогового окна
         dialog = AddRecordDialog(columns, self.db_controller, self.current_table, self)
         if dialog.exec():
