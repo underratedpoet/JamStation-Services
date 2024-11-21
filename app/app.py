@@ -282,8 +282,16 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка", "Выберите таблицу для добавления записи.")
             return
     
-        # Получение списка колонок таблицы
-        columns = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount())]
+        # Получение списка колонок таблицы из базы данных
+        try:
+            columns = self.db_controller.get_table_columns(self.current_table)
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось получить список колонок: {e}")
+            return
+    
+        if not columns:
+            QMessageBox.warning(self, "Ошибка", "Таблица не содержит колонок.")
+            return
     
         # Открытие диалогового окна
         dialog = AddRecordDialog(columns, self.db_controller, self.current_table, self)

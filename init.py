@@ -67,10 +67,11 @@ def ensure_database_and_tables():
         )
         cursor = connection.cursor()
 
+        cursor.execute(f"USE {DB_NAME}")
         # Проверка существования базы данных
-        cursor.execute("SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(?) AND type = N'P'", PROC_ADDEMP_NAME)
+        cursor.execute("SELECT * FROM sys.procedures WHERE name = ? or name = ?;", PROC_ADDEMP_NAME, PROC_CHECKEMP_NAME)
         proc_exists = cursor.fetchone()
-
+        logger.info(f"{proc_exists}")
         if not proc_exists:
             logger.info(f"Procedures do not exist. Creating them...")
             with open(SQL_PROCS_ADDEM_PATH, "r", encoding="utf-8") as sql_file:

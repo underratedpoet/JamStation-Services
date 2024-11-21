@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -67,6 +67,37 @@ async def available_times(request: Request, room_id: int, date: str):
 
     return templates.TemplateResponse("available_times.html", {"request": request, "available_times": available_times})
 
+@app.get("/available_durations/{room_id}/{date}/{time}", response_model=list[int])
+async def available_durations(room_id: int, date: str, time: str):
+    start_time_dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+    query = """
+        SELECT start_time, duration_hours 
+        FROM Schedules 
+        WHERE room_id = ? AND CAST(start_time AS DATE) = ?
+    """
+    schedules = db_controller.execute_query(query, (room_id, start_time_dt.date()))
+
+    # Максимальная продолжительность для бронирования
+    max_duration = 6
+    available_durations = []
+
+    # Проверяем доступность каждого часа
+    for duration in range(1, max_duration + 1):
+        end_time = start_time_dt + timedelta(hours=duration)
+        if end_time.hour > 22:
+            break  # Не разрешаем бронирование позже 22:00
+
+        conflict = any(
+            schedule_start <= start_time_dt < schedule_start + timedelta(hours=schedule_duration) or
+            schedule_start < end_time <= schedule_start + timedelta(hours=schedule_duration)
+            for schedule_start, schedule_duration in schedules
+        )
+        if conflict:
+            break
+        available_durations.append(duration)
+
+    return available_durations
+
 @app.post("/book/{room_id}", response_class=HTMLResponse)
 async def book_room(request: Request, room_id: int, name: str = Form(...), phone: str = Form(...), email: str = Form(None), date: str = Form(...), time: str = Form(...), duration: int = Form(...)):
     # Проверка наличия клиента
@@ -93,7 +124,10 @@ async def book_room(request: Request, room_id: int, name: str = Form(...), phone
     query = "INSERT INTO Schedules (room_id, client_id, start_time, duration_hours, is_paid, status) VALUES (?, ?, ?, ?, 0, N'Активно')"
     db_controller.execute_query(query, (room_id, client_id, start_time_dt, duration), transactional=True)
 
-    return RedirectResponse(url=f"/room/{room_id}", status_code=303)
+    return JSONResponse(
+        content={"message": "Бронирование прошло успешно!", "redirect_url": f"/room/{room_id}"},
+        status_code=200
+    )
 
 
 if __name__ == "__main__":

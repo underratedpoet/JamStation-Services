@@ -32,6 +32,15 @@
     </form>
 
     <script>
+        const today = new Date();
+        const minDate = new Date(today);
+        minDate.setDate(today.getDate() + 1); // Завтрашний день
+        const maxDate = new Date(today);
+        maxDate.setDate(today.getDate() + 14); // Две недели вперед
+    
+        const dateInput = document.querySelector('input[type="date"]');
+        dateInput.min = minDate.toISOString().split('T')[0];
+        dateInput.max = maxDate.toISOString().split('T')[0];
         document.getElementById('date').addEventListener('change', function() {
             const date = this.value;
             const roomId = {{ room_id }};
@@ -42,15 +51,38 @@
                 });
         });
 
-        document.getElementById('time').addEventListener('change', function() {
+        document.getElementById('time').addEventListener('change', function () {
             const time = this.value;
-            const durations = [1, 2, 3, 4, 5, 6];
-            const availableDurations = durations.filter(duration => {
-                const endTime = parseInt(time.split(':')[0]) + duration;
-                return endTime <= 22;
-            });
-            document.getElementById('duration').innerHTML = availableDurations.map(duration => `<option value="${duration}">${duration} hour(s)</option>`).join('');
+            const date = document.getElementById('date').value;
+            const roomId = {{ room_id }};
+        
+            fetch(`/available_durations/${roomId}/${date}/${time}`)
+                .then(response => response.json())
+                .then(durations => {
+                    document.getElementById('duration').innerHTML = durations.map(duration => `<option value="${duration}">${duration} hour(s)</option>`).join('');
+                });
         });
+
+        document.querySelector('form').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+        
+            const response = await fetch(this.action, {
+                method: 'POST',
+                body: formData
+            });
+        
+            if (response.ok) {
+                const data = await response.json();
+                alert(data.message); // Показать сообщение об успехе
+                window.location.href = data.redirect_url; // Перенаправить пользователя
+            } else {
+                const error = await response.json();
+                alert(`Ошибка: ${error.detail}`); // Показать ошибку, если она есть
+            }
+        });
+        
     </script>
+
 </body>
 </html>
