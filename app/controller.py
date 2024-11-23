@@ -49,16 +49,26 @@ class DBController:
                 self.transaction_active = False
             raise
 
-    def paginate_table(self, table_name: str, offset: int, limit: int, order_table: str | None = None):
+    def paginate_table(self, table_name: str, offset: int, limit: int, order_table: str | None = None, filters: dict = None):
         # Добавляем ORDER BY для корректного запроса в SQL Server
-        if order_table is None: order_table = 'NULL'
+        if order_table is None:
+            order_table = 'NULL'
+        
+        # Формируем условия фильтрации
+        filter_conditions = ""
+        if filters:
+            filter_conditions = " AND ".join([f"{col} LIKE '%{val}%'" for col, val in filters.items()])
+            filter_conditions = f"WHERE {filter_conditions}"
+        
         query = f"""
         SELECT * 
         FROM {table_name}
+        {filter_conditions}
         ORDER BY (SELECT {order_table})  -- Используйте реальный столбец для сортировки
         OFFSET {offset} ROWS
         FETCH NEXT {limit} ROWS ONLY;
         """
+        
         rows = self.execute_query(query)
         columns = self.get_table_columns(table_name)
         

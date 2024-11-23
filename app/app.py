@@ -54,6 +54,60 @@ class AddRecordDialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось добавить запись: {e}")
 
+class FindRecordsDialog(QDialog):
+    def __init__(self, table_columns, db_controller, table_name, parent=None):
+        super().__init__(parent)
+        self.db_controller = db_controller
+        self.table_name = table_name
+        self.table_columns = table_columns  # Исключаем столбец ID
+        self._parent = parent
+
+        self.setWindowTitle("Найти")
+        self.setFixedSize(400, 300)
+
+        # Layout для формы ввода данных
+        self.layout = QFormLayout(self)
+
+        # Поля ввода для каждой колонки
+        self.inputs = {}
+        for column in self.table_columns:
+            input_field = QLineEdit(self)
+            input_field.textChanged.connect(self.find)
+            self.inputs[column] = input_field
+            self.layout.addRow(f"{column}:", input_field)
+            
+
+
+        # Кнопки сохранения и отмены
+        self.save_button = QPushButton("Применить фильтры", self)
+        self.save_button.clicked.connect(self.save_filters)
+        self.layout.addRow(self.save_button)
+
+        self.cancel_button = QPushButton("Сбросить", self)
+        self.cancel_button.clicked.connect(self.drop_filters)
+        self.layout.addRow(self.cancel_button)
+
+    def find(self):
+        try:
+            # Получаем значения из полей
+            values = [self.inputs[column].text() for column in self.table_columns]
+            self._parent.column_filters = {}
+            for column, value in zip(self.table_columns, values):
+                self._parent.column_filters[column] = value
+
+            self._parent.load_data()
+            #self._parent.column_filters = None
+            #self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось добавить запись: {e}")
+
+    def drop_filters(self):
+        self._parent.column_filters = None
+        self.accept()
+
+    def save_filters(self):
+        self.accept()
+
 class LoginWindow(QWidget):
     def __init__(self, db_controller: DBController):
         super().__init__()
@@ -113,6 +167,7 @@ class MainWindow(QMainWindow):
 
         self.current_offset = 0
         self.limit = 10
+        self.column_filters = None
         self.init_ui()
 
     def init_ui(self):
@@ -179,6 +234,9 @@ class MainWindow(QMainWindow):
         self.add_button = QPushButton("Добавить запись", self.tab1)
         self.add_button.clicked.connect(self.add_record)
 
+        self.find_button = QPushButton("Фильтры", self.tab1)
+        self.find_button.clicked.connect(self.find_records)
+
         # Размещение элементов на первой вкладке
         layout = QVBoxLayout()
         table_controls_layout = QHBoxLayout()
@@ -198,6 +256,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.delete_button)
         layout.addWidget(self.save_button)
         layout.addWidget(self.add_button)
+        layout.addWidget(self.find_button)
 
         self.tab1.setLayout(layout)
 
@@ -219,6 +278,7 @@ class MainWindow(QMainWindow):
         """Загрузка данных выбранной таблицы"""
         self.current_table = self.table_selector.currentText()
         self.current_offset = 0
+        self.column_filters = None
         self.load_data()
 
     def load_data(self):
@@ -228,7 +288,7 @@ class MainWindow(QMainWindow):
                 return
 
             # Получение данных
-            data = self.db_controller.paginate_table(self.current_table, self.current_offset, self.limit)
+            data = self.db_controller.paginate_table(self.current_table, self.current_offset, self.limit, filters=self.column_filters)
             columns = self.db_controller.get_table_columns(self.current_table)
             if not data:  # Если данных нет, отображаем метку
                 self.table.clear()
@@ -272,30 +332,6 @@ class MainWindow(QMainWindow):
         self.current_offset += self.limit
         self.load_data()
 
-    def apply_filters(self):
-        """Применить фильтры к запросу"""
-        filters_text = self.filters.text().strip()
-        if filters_text:
-            try:
-                conditions = []
-                for condition in filters_text.split(","):
-                    key, value = condition.split("=")
-                    key, value = key.strip(), value.strip()
-                    if value.isdigit():
-                        conditions.append(f"{key} = {value}")
-                    else:
-                        conditions.append(f"{key} LIKE '%{value}%'")
-                self.current_filters = " AND ".join(conditions)
-            except ValueError:
-                QMessageBox.warning(self, "Ошибка", "Неправильный формат фильтров. Используйте col=val.")
-                return
-        else:
-            self.current_filters = ""
-
-        self.current_offset = 0
-        self.load_data()
-
-
     def selection_changed(self):
         """Показываем кнопку удаления при выделении строки"""
         if self.table.currentItem():
@@ -331,6 +367,29 @@ class MainWindow(QMainWindow):
         dialog = AddRecordDialog(columns, self.db_controller, self.current_table, self)
         if dialog.exec():
             self.load_data()  # Перезагрузка данных
+
+    def find_records(self):
+        """Открыть окно для добавления новой записи."""
+        if not self.current_table:
+            QMessageBox.warning(self, "Ошибка", "Выберите таблицу для добавления записи.")
+            return
+
+        # Получение списка колонок таблицы из базы данных
+        try:
+            columns = self.db_controller.get_table_columns(self.current_table)
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось получить список колонок: {e}")
+            return
+
+        if not columns:
+            QMessageBox.warning(self, "Ошибка", "Таблица не содержит колонок.")
+            return
+
+        # Открытие диалогового окна
+        dialog = FindRecordsDialog(columns, self.db_controller, self.current_table, self)
+        if dialog.exec():
+            print(self.column_filters)
+            self.load_data()  # Перезагрузка данных       
 
     def delete_record(self):
         """Удаление записи из таблицы"""

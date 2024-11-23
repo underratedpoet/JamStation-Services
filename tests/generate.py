@@ -32,7 +32,7 @@ def insert_fake_data():
                 INSERT INTO Employees (location_id, first_name, second_name, last_name, role, phone_number, email, password_hash) 
                 VALUES (?, ?, ?, ?, ?, ?) 
                 """, 
-                random.randint(2, 7), 
+                random.randint(1, 5), 
                 faker.first_name(), 
                 faker.name_nonbinary(),
                 faker.last_name(),
@@ -61,9 +61,9 @@ def insert_fake_data():
                 INSERT INTO Rooms (location_id, name, capacity, hourly_rate) 
                 VALUES (?, ?, ?, ?) 
                 """, 
-                random.randint(18, 22), 
+                random.randint(1, 5), 
                 f"Room {faker.random_int(1, 20)}", 
-                random.randint(5, 50), 
+                random.randint(2, 6), 
                 round(random.uniform(10.0, 50.0), 2) 
             ) 
  
@@ -74,7 +74,7 @@ def insert_fake_data():
                 INSERT INTO Instruments (location_id, name, hourly_rate) 
                 VALUES (?, ?, ?) 
                 """, 
-                random.randint(18, 22), 
+                random.randint(1, 5), 
                 faker.word(), 
                 round(random.uniform(5.0, 20.0), 2) 
             ) 
