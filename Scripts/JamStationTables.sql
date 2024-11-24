@@ -56,6 +56,14 @@ CREATE TABLE Consumables (
 -- Индекс для поиска по локации и названию товара
 CREATE INDEX IX_Consumables_Location_Name ON Consumables(location_id, name);
 
+CREATE TABLE Equipment (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    name NVARCHAR(100) NOT NULL,
+    type NVARCHAR(50) NOT NULL,
+    room_id INT NOT NULL FOREIGN KEY REFERENCES Rooms(id),
+    status NVARCHAR(20)
+);
+
 -- Таблица с клиентами
 CREATE TABLE Clients (
     id INT IDENTITY(1,1) PRIMARY KEY,
