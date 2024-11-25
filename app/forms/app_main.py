@@ -8,6 +8,7 @@ from controller import DBController
 
 from forms.app_add_row import AddRecordDialog
 from forms.app_filter import FindRecordsDialog
+from forms.app_report import ReportWindow
 
 class MainWindow(QMainWindow):
     def __init__(self, db_controller: DBController):
@@ -102,6 +103,7 @@ class MainWindow(QMainWindow):
         self.tab1.setLayout(layout)
 
         self.status_report_button = QPushButton("Отчет о состоянии оборудования", self.tab2)
+        self.status_report_button.clicked.connect(self.open_report)
 
         self.load_table_list()
 
@@ -274,3 +276,9 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Успех", "Изменения успешно сохранены.")
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить изменения: {e}")
+
+    def open_report(self):
+        # Открытие диалогового окна
+        dialog = ReportWindow(self.db_controller, self)
+        if dialog.exec():
+            QMessageBox.information(self, "Успех", "Сохранено")
