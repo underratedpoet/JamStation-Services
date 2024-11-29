@@ -89,8 +89,6 @@ class MainWindow(QMainWindow):
         navigation_layout.addWidget(self.prev_button)
         navigation_layout.addWidget(self.next_button)
 
-        #layout.insertWidget(2, self.filters)  # Вставляем над таблицей
-        #layout.insertWidget(3, self.search_button)
         layout.addLayout(table_controls_layout)
         layout.addWidget(self.table)
         layout.addWidget(self.no_data_label)

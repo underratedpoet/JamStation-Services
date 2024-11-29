@@ -164,7 +164,7 @@ CREATE TABLE Checks (
     item_table NVARCHAR(50) NOT NULL, -- Тип объекта
     inspection_date DATETIME NOT NULL DEFAULT GETDATE(), -- Дата проверки
     description NVARCHAR(255),  -- Описание поломки
-    status NVARCHAR(50) NOT NULL DEFAULT 'OK'  -- Статус поломки ('ok' или 'broken')
+    status NVARCHAR(50) NOT NULL DEFAULT 'OK'  -- Статус ('ok' или 'broken')
 );
 
 -- Индекс для поиска по типу объекта и дате

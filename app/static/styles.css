@@ -59,6 +59,11 @@ button:hover, #welcome-book:hover {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+
+    justify-content: center;
+    align-items: center;
+    
+    flex-direction: column
 }
 
 .container a {

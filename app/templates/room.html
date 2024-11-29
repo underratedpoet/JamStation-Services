@@ -1,88 +1,88 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>JamStudio - Зал {{ room.name }}</title>
-    <link rel="stylesheet" type="text/css" href="/static/styles.css">
-    <link type="image/png" sizes="16x16" rel="icon" href="/static/icons8-music-band-16.png">
-</head>
-<body>
-    <h1>Зал {{ room.name }}</h1>
-    <p>Вместипость: {{ room.capacity }} чел.</p>
-    <p>Стоимость (в час): {{ room.hourly_rate }}₽</p>
-
-    <h2>Забронировать этот зал</h2>
-    <form action="/book/{{ room_id }}" method="post">
-        <label for="name">Ваше имя:</label>
-        <input type="text" id="name" name="name" required><br>
-        <label for="phone">Вам номер телефона:</label>
-        <input type="text" id="phone" name="phone" required><br>
-        <label for="email">Ваша электронная почта:</label>
-        <input type="email" id="email" name="email"><br>
-        <label for="date">Выбериате дату:</label>
-        <input type="date" id="date" name="date" required><br>
-        <label for="time">Выберите время:</label>
-        <select id="time" name="time" required>
-            <!-- Временные слоты будут загружены через JavaScript -->
-        </select><br>
-        <label for="duration">Выберите продолжительность (в часах):</label>
-        <select id="duration" name="duration" required>
-            <!-- Доступные продолжительности будут загружены через JavaScript -->
-        </select><br>
-        <button type="submit">Забронировать</button>
-    </form>
-
-    <script>
-        const today = new Date();
-        const minDate = new Date(today);
-        minDate.setDate(today.getDate() + 1); // Завтрашний день
-        const maxDate = new Date(today);
-        maxDate.setDate(today.getDate() + 14); // Две недели вперед
+    <head>
+        <title>JamStudio - Зал {{ room.name }}</title>
+        <link rel="stylesheet" type="text/css" href="/static/styles.css">
+        <link type="image/png" sizes="16x16" rel="icon" href="/static/icons8-music-band-16.png">
+    </head>
+    <body>
+        <h1>Зал {{ room.name }}</h1>
+        <p>Вместипость: {{ room.capacity }} чел.</p>
+        <p>Стоимость (в час): {{ room.hourly_rate }}₽</p>
     
-        const dateInput = document.querySelector('input[type="date"]');
-        dateInput.min = minDate.toISOString().split('T')[0];
-        dateInput.max = maxDate.toISOString().split('T')[0];
-        document.getElementById('date').addEventListener('change', function() {
-            const date = this.value;
-            const roomId = {{ room_id }};
-            fetch(`/available_times/${roomId}/${date}`)
-                .then(response => response.text())
-                .then(html => {
-                    document.getElementById('time').innerHTML = html;
-                });
-        });
-
-        document.getElementById('time').addEventListener('change', function () {
-            const time = this.value;
-            const date = document.getElementById('date').value;
-            const roomId = {{ room_id }};
+        <h2>Забронировать этот зал</h2>
+        <form action="/book/{{ room_id }}" method="post">
+            <label for="name">Ваше имя:</label>
+            <input type="text" id="name" name="name" required><br>
+            <label for="phone">Вам номер телефона:</label>
+            <input type="text" id="phone" name="phone" required><br>
+            <label for="email">Ваша электронная почта:</label>
+            <input type="email" id="email" name="email"><br>
+            <label for="date">Выбериате дату:</label>
+            <input type="date" id="date" name="date" required><br>
+            <label for="time">Выберите время:</label>
+            <select id="time" name="time" required>
+                <!-- Временные слоты будут загружены через JavaScript -->
+            </select><br>
+            <label for="duration">Выберите продолжительность (в часах):</label>
+            <select id="duration" name="duration" required>
+                <!-- Доступные продолжительности будут загружены через JavaScript -->
+            </select><br>
+            <button type="submit">Забронировать</button>
+        </form>
+    
+        <script>
+            const today = new Date();
+            const minDate = new Date(today);
+            minDate.setDate(today.getDate() + 1); // Завтрашний день
+            const maxDate = new Date(today);
+            maxDate.setDate(today.getDate() + 14); // Две недели вперед
         
-            fetch(`/available_durations/${roomId}/${date}/${time}`)
-                .then(response => response.json())
-                .then(durations => {
-                    document.getElementById('duration').innerHTML = durations.map(duration => `<option value="${duration}">${duration} hour(s)</option>`).join('');
-                });
-        });
-
-        document.querySelector('form').addEventListener('submit', async function (event) {
-            event.preventDefault();
-            const formData = new FormData(this);
-        
-            const response = await fetch(this.action, {
-                method: 'POST',
-                body: formData
+            const dateInput = document.querySelector('input[type="date"]');
+            dateInput.min = minDate.toISOString().split('T')[0];
+            dateInput.max = maxDate.toISOString().split('T')[0];
+            document.getElementById('date').addEventListener('change', function() {
+                const date = this.value;
+                const roomId = {{ room_id }};
+                fetch(`/available_times/${roomId}/${date}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('time').innerHTML = html;
+                    });
             });
         
-            if (response.ok) {
-                const data = await response.json();
-                alert(data.message); // Показать сообщение об успехе
-                window.location.href = data.redirect_url; // Перенаправить пользователя
-            } else {
-                const error = await response.json();
-                alert(`Ошибка: ${error.detail}`); // Показать ошибку, если она есть
-            }
-        });
+            document.getElementById('time').addEventListener('change', function () {
+                const time = this.value;
+                const date = document.getElementById('date').value;
+                const roomId = {{ room_id }};
+            
+                fetch(`/available_durations/${roomId}/${date}/${time}`)
+                    .then(response => response.json())
+                    .then(durations => {
+                        document.getElementById('duration').innerHTML = durations.map(duration => `<option value="${duration}">${duration} hour(s)</option>`).join('');
+                    });
+            });
         
-    </script>
-
-</body>
+            document.querySelector('form').addEventListener('submit', async function (event) {
+                event.preventDefault();
+                const formData = new FormData(this);
+            
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: formData
+                });
+            
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(data.message); // Показать сообщение об успехе
+                    window.location.href = data.redirect_url; // Перенаправить пользователя
+                } else {
+                    const error = await response.json();
+                    alert(`Ошибка: ${error.detail}`); // Показать ошибку, если она есть
+                }
+            });
+            
+        </script>
+    
+    </body>
 </html>

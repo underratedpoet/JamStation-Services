@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>JamStudio - Залы</title>
-    <link rel="stylesheet" type="text/css" href="/static/styles.css">
-    <link type="image/png" sizes="16x16" rel="icon" href="/static/icons8-music-band-16.png">
-</head>
-<body>
-    <h1>Залы</h1>
-    <div class="container">
-        {% for room in rooms %}
-            <a href="/room/{{ room.id }}">{{ room.name }}</a>
-        {% endfor %}
-    </div>
-</body>
+    <head>
+        <title>JamStudio - Залы</title>
+        <link rel="stylesheet" type="text/css" href="/static/styles.css">
+        <link type="image/png" sizes="16x16" rel="icon" href="/static/icons8-music-band-16.png">
+    </head>
+    <body>
+        <h1>Залы</h1>
+        <div class="container">
+            {% for room in rooms %}
+                <a href="/room/{{ room.id }}">{{ room.name }}</a>
+            {% endfor %}
+        </div>
+    </body>
 </html>
