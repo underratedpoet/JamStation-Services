@@ -1,3 +1,6 @@
 **/old/
 **/__pycache__/
 .venv/
+**/forms
+**/widgets
+**app.py
