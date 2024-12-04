@@ -1,8 +1,7 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QVBoxLayout, QPushButton, QWidget, QMessageBox, QLabel, QComboBox, QHBoxLayout, QLineEdit, QDialog, QFormLayout, QTabWidget, QTextEdit, QFileDialog
-from PyQt6.QtCore import Qt
-from controller import DBController
-from forms.documents import save_report_to_docx
+from PyQt6.QtWidgets import QPushButton, QMessageBox, QLabel, QDialog, QFormLayout, QTextEdit, QFileDialog
+from utils.controller import DBController
+from utils.documents import save_report_to_docx
 
 class ReportWindow(QDialog):
     def __init__(self, db_controller: DBController, parent=None):

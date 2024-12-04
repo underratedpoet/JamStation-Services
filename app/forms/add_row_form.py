@@ -1,13 +1,9 @@
-import sys
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QVBoxLayout,
-    QPushButton, QWidget, QMessageBox, QLabel, QComboBox, QHBoxLayout, QLineEdit, QDialog, QFormLayout, QTabWidget
-)
-from PyQt6.QtCore import Qt
-from controller import DBController
+from PyQt6.QtWidgets import QPushButton, QMessageBox, QLineEdit, QDialog, QFormLayout
+
+from utils.controller import DBController
 
 class AddRecordDialog(QDialog):
-    def __init__(self, table_columns, db_controller, table_name, parent=None):
+    def __init__(self, table_columns, db_controller: DBController, table_name, parent=None):
         super().__init__(parent)
         self.db_controller = db_controller
         self.table_name = table_name

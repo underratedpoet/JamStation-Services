@@ -1,14 +1,13 @@
+import os
+from datetime import datetime, timedelta
+
 from fastapi import FastAPI, Request, HTTPException, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-import pyodbc
-import logging
-from datetime import datetime, timedelta
-from controller import DBController
-import os
 import uvicorn
+
+from utils.controller import DBController
 
 app = FastAPI()
 # Подключение папки static для обслуживания статических файлов

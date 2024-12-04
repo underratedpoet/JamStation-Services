@@ -1,12 +1,9 @@
-import sys
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QVBoxLayout,
-    QPushButton, QWidget, QMessageBox, QLabel, QComboBox, QHBoxLayout, QLineEdit, QDialog, QFormLayout, QTabWidget
+    QVBoxLayout, QPushButton, QWidget, 
+    QMessageBox, QLabel, QLineEdit
 )
-from PyQt6.QtCore import Qt
-from controller import DBController
-
-from forms.app_main import MainWindow
+from utils.controller import DBController
+from forms.main_form import MainWindow
 
 class LoginWindow(QWidget):
     def __init__(self, db_controller: DBController):
