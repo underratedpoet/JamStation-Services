@@ -11,3 +11,14 @@ class ScheduleRecord(BaseModel):
     duration_hours: int
     is_paid: bool
     status: str
+
+class EquipmentModel(BaseModel):
+    id: int
+    name: str
+    type: str
+    status: str
+
+class InstrumentModel(BaseModel):
+    id: int
+    name: str
+    hourly_rate: float

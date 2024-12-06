@@ -4,6 +4,7 @@ from utils.controller import DBController
 from widgets.edit_tab import EditTab
 from widgets.report_tab import ReportTab
 from widgets.schedule_tab import ScheduleTab
+from widgets.accounting_tab import EquipmentInstrumentsTab
 
 
 class MainWindow(QMainWindow):
@@ -17,7 +18,7 @@ class MainWindow(QMainWindow):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("Редактирование таблицы")
+        self.setWindowTitle("JamStation")
         self.setGeometry(200, 200, 800, 600)
 
         # Создание виджета вкладок
@@ -29,6 +30,9 @@ class MainWindow(QMainWindow):
 
         self.report_tab = ReportTab(self.db_controller)
         self.tab_widget.addTab(self.report_tab, "Отчеты")
+
+        self.accounting_tab = EquipmentInstrumentsTab(self.db_controller)
+        self.tab_widget.addTab(self.accounting_tab, "Оборудование и инструменты")
         
         self.report_tab = ScheduleTab(self.db_controller)
         self.tab_widget.addTab(self.report_tab, "Расписание")
