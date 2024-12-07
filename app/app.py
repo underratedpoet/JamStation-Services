@@ -12,5 +12,5 @@ if __name__ == "__main__":
     main = MainWindow(controller)
     main.show()
     #login = LoginWindow(controller)
-    #login.show()
+    #logi5n.show()
     sys.exit(app.exec())

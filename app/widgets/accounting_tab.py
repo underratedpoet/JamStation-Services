@@ -7,13 +7,14 @@ from PyQt6.QtGui import QPalette, QColor
 from pydantic import BaseModel, ValidationError
 from typing import Optional, List, Any
 from utils.controller import DBController
-from utils.shemas import EquipmentModel, InstrumentModel
+from utils.shemas import Equipment, Instrument
 
 class EquipmentInstrumentsTab(QWidget):
     def __init__(self, db_controller: DBController):
         super().__init__()
         self.db_controller = db_controller
-        self.current_view = "equipment"  # 'equipment' or 'instruments'
+        self.current_view = "Equipment"  # 'equipment' or 'instruments'
+        self.current_table = "accounting"
         self.init_ui()
 
     def init_ui(self):
@@ -27,6 +28,8 @@ class EquipmentInstrumentsTab(QWidget):
         self.view_selector.currentTextChanged.connect(self.change_view)
         #layout.addWidget(self.view_selector)
         self.table_selector = QComboBox()
+        self.table_selector.addItems(["Учет", "Проверки", "Ремонт"])
+        self.table_selector.currentTextChanged.connect(self.change_view)
         #self.table_selector.currentTextChanged.connect(self.change_table)
         #layout.addWidget(self.table_selector)
         tables_layout.addWidget(self.view_selector)
@@ -40,6 +43,7 @@ class EquipmentInstrumentsTab(QWidget):
         self.room_selector.setEnabled(False)  # Включается только для оборудования
         self.load_locations()
         self.location_selector.currentIndexChanged.connect(self.update_filters)
+        self.room_selector.currentIndexChanged.connect(self.load_data)
         filter_layout.addWidget(QLabel("Локация:"))
         filter_layout.addWidget(self.location_selector)
         filter_layout.addWidget(QLabel("Зал:"))
@@ -71,35 +75,43 @@ class EquipmentInstrumentsTab(QWidget):
 
     def update_filters(self):
         location_id = self.location_selector.currentData()
-        if self.current_view == "equipment" and location_id is not None:
+        if self.current_view == "Equipment" and location_id is not None:
             query = "SELECT id, name FROM Rooms WHERE location_id = ?"
             rooms = self.db_controller.execute_query(query, (location_id,))
             self.room_selector.clear()
             self.room_selector.addItem("Все залы", None)
+
             for room in rooms:
                 self.room_selector.addItem(room[1], room[0])
         self.load_data()
 
     def change_view(self):
-        self.current_view = "equipment" if self.view_selector.currentText() == "Оборудование" else "instruments"
-        self.room_selector.setEnabled(self.current_view == "equipment")
+        #self.table_selector.clear()
+        if self.view_selector.currentText() == "Оборудование":
+            self.current_view = "Equipment"
+            self.room_selector.setEnabled(True)
+        else:
+            self.current_view = "Instruments"
+            self.room_selector.setEnabled(False)
+        if self.table_selector.currentText() == "Учет":
+            self.current_table = "accounting"
+        elif self.table_selector.currentText() == "Проверки":
+            self.current_table = "checks"
+        else: self.current_table = "repairs"
+        #self.current_view = "equipment" if self.view_selector.currentText() == "Оборудование" else "instruments"
+        #self.room_selector.setEnabled(self.current_view == "equipment")
         self.load_data()
 
     def load_data(self):
         location_id = self.location_selector.currentData()
-        room_id = self.room_selector.currentData() if self.current_view == "equipment" else None
-
-        if self.current_view == "equipment":
-            query = "SELECT id, name, type, status FROM Equipment WHERE room_id IN (SELECT id FROM Rooms WHERE location_id = ?)"
-            params = [location_id]
-            if room_id is not None:
-                query += " AND room_id = ?"
-                params.append(room_id)
+        room_id = self.room_selector.currentData() if self.current_view == "Equipment" else None
+        if self.current_table == "accounting":
+            records = self.db_controller.load_accounting(self.current_view, location_id, room_id)
+        elif self.current_table == "checks":
+            records = self.db_controller.load_checks(self.current_view, location_id, room_id)
         else:
-            query = "SELECT id, name, hourly_rate FROM Instruments WHERE location_id = ?"
-            params = [location_id]
+            records = self.db_controller.load_repairs(self.current_view, location_id, room_id)
 
-        records = self.db_controller.execute_query(query, tuple(params))
         self.display_records(records)
 
     def display_records(self, records):
@@ -111,25 +123,9 @@ class EquipmentInstrumentsTab(QWidget):
 
         # Создание плиток
         for record in records:
-            try:
-                if self.current_view == "equipment":
-                    record_data = EquipmentModel.parse_obj({
-                        "id": record[0],
-                        "name": record[1],
-                        "type": record[2],
-                        "status": record[3],
-                    })
-                else:
-                    record_data = InstrumentModel.parse_obj({
-                        "id": record[0],
-                        "name": record[1],
-                        "hourly_rate": record[2],
-                    })
+            tile = self.create_tile(record)
+            self.scroll_layout.addWidget(tile)
 
-                tile = self.create_tile(record_data)
-                self.scroll_layout.addWidget(tile)
-            except ValidationError as e:
-                print(f"Ошибка валидации: {e}")
 
     def create_tile(self, record: BaseModel) -> QWidget:
         tile = QWidget()
@@ -148,7 +144,7 @@ class EquipmentInstrumentsTab(QWidget):
         """)
 
         layout = QVBoxLayout(tile)
-        for field, value in record.dict().items():
+        for field, value in record.model_dump().items():
             layout.addWidget(QLabel(f"{field.capitalize()}: {value}"))
 
         tile.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)

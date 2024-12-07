@@ -83,18 +83,7 @@ class ScheduleTab(QWidget):
         room_id = self.room_selector.currentData()
         date = self.date_selector.date().toString("yyyy-MM-dd")
         if location_id is not None:
-            query = """
-            SELECT S.id, R.name, C.name, S.start_time, S.duration_hours, S.is_paid, S.status
-            FROM Schedules S
-            JOIN Rooms R ON S.room_id = R.id
-            JOIN Clients C ON S.client_id = C.id
-            WHERE R.location_id = ? AND CONVERT(date, S.start_time) = ?
-            """
-            params = [location_id, date]
-            if room_id is not None:
-                query += " AND R.id = ?"
-                params.append(room_id)
-            schedule = self.db_controller.execute_query(query, tuple(params))
+            schedule = self.db_controller.load_schedule(location_id, date, room_id)
             self.display_schedule(schedule)
 
     def display_schedule(self, schedule):
@@ -106,19 +95,7 @@ class ScheduleTab(QWidget):
 
         # Создание плиток для каждой записи
         for record in schedule:
-            try:
-                schedule_record = ScheduleRecord(
-                    id=record[0],
-                    room_name=record[1],
-                    client_name=record[2],
-                    start_time=record[3],
-                    duration_hours=record[4],
-                    is_paid=record[5],
-                    status=record[6]
-                )
-                self.add_schedule_tile(schedule_record)
-            except ValidationError as e:
-                print(f"Validation error: {e}")
+            self.add_schedule_tile(record)
 
     def add_schedule_tile(self, record: ScheduleRecord):
         tile = QWidget()

@@ -2,6 +2,8 @@ import pyodbc
 import logging
 from typing import List, Any
 
+from utils.shemas import *
+
 # Настройка логгера
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -243,3 +245,163 @@ class DBController:
         except Exception as e:
             self.logger.error(f"Error closing connection: {e}")
             raise
+
+    def select(self, columns: list[str] | None, table: str, filters: dict[str, str] | None = None) -> list:
+        if not columns:
+            query = f"SELECT * FROM {table}"
+        else:
+            selected_columns = ", ".join(columns)
+            query = f"SELECT {selected_columns} FROM {table}"
+        if filters:
+            filter_conditions = " AND ".join([f"{col} LIKE '%{val}%'" for col, val in filters.items()])
+            query += f" WHERE {filter_conditions}"
+        rows = self.execute_query(query)
+        return rows        
+    
+    def delete_by_id(self, table: str, id: int) -> int:
+        query = f'DELETE FROM {table} WHERE id = {id}'
+        result = self.execute_query(query)
+        if result == 0: return 0
+        else: return 1
+
+    def load_schedule(self, location_id, date, room_id) -> list[ScheduleRecord]:
+        query = """
+        SELECT S.id, R.name, C.name, S.start_time, S.duration_hours, S.is_paid, S.status
+        FROM Schedules S
+        JOIN Rooms R ON S.room_id = R.id
+        JOIN Clients C ON S.client_id = C.id
+        WHERE R.location_id = ? AND CONVERT(date, S.start_time) = ?
+        """
+        params = [location_id, date]
+        if room_id is not None:
+            query += " AND R.id = ?"
+            params.append(room_id)
+        schedule = self.execute_query(query, tuple(params))
+        record_shemas = []
+        for record in schedule:
+            schedule_record = ScheduleRecord(
+                id=record[0],
+                room_name=record[1],
+                client_name=record[2],
+                start_time=record[3],
+                duration_hours=record[4],
+                is_paid=record[5],
+                status=record[6]
+            )
+            record_shemas.append(schedule_record)
+        return record_shemas
+    
+    def load_accounting(self, type, location_id, room_id) -> list[EquipmentRecord] | list [InstrumentRecord]:
+        if type == "Equipment":
+            query = "SELECT id, name, type, status FROM Equipment WHERE room_id IN (SELECT id FROM Rooms WHERE location_id = ?)"
+            params = [location_id]
+            if room_id is not None:
+                query += " AND room_id = ?"
+                params.append(room_id)
+        else:
+            query = "SELECT id, name, hourly_rate FROM Instruments WHERE location_id = ?"
+            params = [location_id]
+
+        print(query)
+        records = self.execute_query(query, tuple(params))
+
+        record_shemas = []
+        for record in records:
+            if type == "Equipment":
+                record_data = EquipmentRecord.model_validate({
+                    "id": record[0],
+                    "name": record[1],
+                    "type": record[2],
+                    "status": record[3],
+                })
+            else:
+                record_data = InstrumentRecord.model_validate({
+                    "id": record[0],
+                    "name": record[1],
+                    "hourly_rate": record[2],
+                })
+            record_shemas.append(record_data)
+        
+        return record_shemas
+
+
+    def load_checks(self, type, location_id, room_id, status = None) -> list[CheckRecord]:
+        query = f"""
+            SELECT 
+            	C.id, T.name, E.first_name, E.last_name, C.inspection_date, C.description, C.status
+            FROM 
+            	Checks C, Employees E, {type} T, Locations L, Rooms R
+            WHERE 
+            	item_table = '{type}' 
+            	AND C.item_id = T.id
+            	AND E.id = C.employee_id
+            	AND T.room_id = R.id
+            	AND R.location_id = L.id
+            	AND L.id = ?
+        """
+        params = [location_id]
+        if room_id is not None:
+            query += " AND R.room_id = ?"
+            params.append(room_id) 
+        if status is not None:
+            query += " AND C.status = ?"
+            params.append(status)    
+
+        records = self.execute_query(query, tuple(params))
+        record_shemas = []
+        for record in records:
+            schedule_record = CheckRecord(
+                id=record[0],
+                name=record[1],
+                employee=f"{record[2]} {record[3]}",
+                inspection_date=record[4],
+                description=record[5],
+                status=record[6]
+            )
+            record_shemas.append(schedule_record)
+        return record_shemas     
+    
+    def load_repairs(self, type, location_id, room_id, status = None) -> list[RepairRecord]:
+        query = f"""
+            SELECT 
+            	R.id, 
+                T.name, 
+                C.description, 
+                Rep.repair_start_date, 
+                Rep.repair_end_date, 
+                Rep.repair_status, 
+                Rep.legal_entity,
+                Rep.repair_cost
+            FROM 
+            	Repairs Rep, Checks C, {type} T, Locations L, Rooms R
+            WHERE 
+            	item_table = '{type}' 
+                AND Rep.check_id = C.id
+            	AND C.item_id = T.id
+            	{'AND T.room_id = R.id' if room_id else ''}
+            	AND R.location_id = L.id
+            	AND L.id = ?
+        """
+        params = [location_id]
+        if room_id is not None:
+            query += " AND R.room_id = ?"
+            params.append(room_id) 
+        if status is not None:
+            query += " AND R.repair_status = ?"
+            params.append(status)    
+
+        records = self.execute_query(query, tuple(params))
+        record_shemas = []
+        for record in records:
+            schedule_record = RepairRecord(
+                id=record[0],
+                name=record[1],
+                description=record[2],
+                repair_start_date=record[3],
+                repair_end_date=record[4],
+                repair_status=record[5],
+                legal_entity=record[6],
+                repair_cost=record[7],
+            )
+            record_shemas.append(schedule_record)
+        return record_shemas       
