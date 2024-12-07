@@ -246,7 +246,7 @@ class DBController:
             self.logger.error(f"Error closing connection: {e}")
             raise
 
-    def select(self, columns: list[str] | None, table: str, filters: dict[str, str] | None = None) -> list:
+    def select(self, columns: list[str] | None, table: str, id: int, filters: dict | None = None) -> list:
         if not columns:
             query = f"SELECT * FROM {table}"
         else:
@@ -255,7 +255,11 @@ class DBController:
         if filters:
             filter_conditions = " AND ".join([f"{col} LIKE '%{val}%'" for col, val in filters.items()])
             query += f" WHERE {filter_conditions}"
+        if id:
+            if filters: query += f" AND id = {id}"
+            else: query += f" WHERE id = {id}"
         rows = self.execute_query(query)
+        if id: return rows[0]
         return rows        
     
     def delete_by_id(self, table: str, id: int) -> int:
@@ -302,7 +306,6 @@ class DBController:
             query = "SELECT id, name, hourly_rate FROM Instruments WHERE location_id = ?"
             params = [location_id]
 
-        print(query)
         records = self.execute_query(query, tuple(params))
 
         record_shemas = []
@@ -330,23 +333,22 @@ class DBController:
             SELECT 
             	C.id, T.name, E.first_name, E.last_name, C.inspection_date, C.description, C.status
             FROM 
-            	Checks C, Employees E, {type} T, Locations L, Rooms R
+            	Checks C, Employees E, {type} T, Locations L{', Rooms R' if type=='Equipment' else ''}
             WHERE 
-            	item_table = '{type}' 
+            	C.item_table = '{type}' 
             	AND C.item_id = T.id
             	AND E.id = C.employee_id
-            	AND T.room_id = R.id
-            	AND R.location_id = L.id
+            	{'AND T.room_id = R.id' if type=='Equipment' else ''}
+                {'AND R.location_id = L.id' if type=='Equipment' else 'AND T.location_id = L.id'}
             	AND L.id = ?
         """
         params = [location_id]
         if room_id is not None:
-            query += " AND R.room_id = ?"
+            query += " AND R.id = ?"
             params.append(room_id) 
         if status is not None:
             query += " AND C.status = ?"
             params.append(status)    
-
         records = self.execute_query(query, tuple(params))
         record_shemas = []
         for record in records:
@@ -364,7 +366,7 @@ class DBController:
     def load_repairs(self, type, location_id, room_id, status = None) -> list[RepairRecord]:
         query = f"""
             SELECT 
-            	R.id, 
+            	Rep.id, 
                 T.name, 
                 C.description, 
                 Rep.repair_start_date, 
@@ -373,23 +375,22 @@ class DBController:
                 Rep.legal_entity,
                 Rep.repair_cost
             FROM 
-            	Repairs Rep, Checks C, {type} T, Locations L, Rooms R
+            	Repairs Rep, Checks C, {type} T, Locations L{', Rooms R' if type=='Equipment' else ''}
             WHERE 
             	item_table = '{type}' 
                 AND Rep.check_id = C.id
             	AND C.item_id = T.id
-            	{'AND T.room_id = R.id' if room_id else ''}
-            	AND R.location_id = L.id
+            	{'AND T.room_id = R.id' if type=='Equipment' else ''}
+            	{'AND R.location_id = L.id' if type=='Equipment' else 'AND T.location_id = L.id'}
             	AND L.id = ?
         """
         params = [location_id]
         if room_id is not None:
-            query += " AND R.room_id = ?"
+            query += " AND R.id = ?"
             params.append(room_id) 
         if status is not None:
             query += " AND R.repair_status = ?"
             params.append(status)    
-
         records = self.execute_query(query, tuple(params))
         record_shemas = []
         for record in records:

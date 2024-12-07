@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QPushButton, QMessageBox, QLineEdit, QDialog, QFormL
 
 from utils.controller import DBController
 
-class AddRecordDialog(QDialog):
+class AddRowDialog(QDialog):
     def __init__(self, table_columns, db_controller: DBController, table_name, parent=None):
         super().__init__(parent)
         self.db_controller = db_controller

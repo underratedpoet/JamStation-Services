@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from utils.controller import DBController
-from forms.add_row_form import AddRecordDialog
+from forms.add_row_form import AddRowDialog
 from forms.filter_form import FindRecordsDialog
 
 class EditTab(QWidget):
@@ -190,7 +190,7 @@ class EditTab(QWidget):
             return
 
         # Открытие диалогового окна
-        dialog = AddRecordDialog(columns, self.db_controller, self.current_table, self)
+        dialog = AddRowDialog(columns, self.db_controller, self.current_table, self)
         if dialog.exec():
             self.load_data()  # Перезагрузка данных
 

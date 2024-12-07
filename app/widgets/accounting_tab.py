@@ -1,13 +1,12 @@
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel,
-    QScrollArea, QWidget, QMenu, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QFrame
+    QScrollArea, QWidget, QMenu, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QFrame,QMessageBox
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette, QColor
-from pydantic import BaseModel, ValidationError
-from typing import Optional, List, Any
+from pydantic import BaseModel
+
 from utils.controller import DBController
-from utils.shemas import Equipment, Instrument
+from forms.add_record_form import AddRecordDialog
 
 class EquipmentInstrumentsTab(QWidget):
     def __init__(self, db_controller: DBController):
@@ -158,8 +157,15 @@ class EquipmentInstrumentsTab(QWidget):
         menu.exec(self.mapToGlobal(pos))
 
     def add_record(self):
-        # Диалог добавления записи
-        print("Добавить запись")
+        # Открытие диалогового окна
+        location_id = self.location_selector.currentData()
+        room_id = self.room_selector.currentData() if self.current_view == "Equipment" else None
+        if self.current_view == "Equipment" and room_id is None:
+            QMessageBox.warning(self, "Ошибка", "Для добавления новго оборудования выберите зал.")
+            return
+        dialog = AddRecordDialog(self.current_view, self.current_table, location_id, room_id, self.db_controller, self)
+        if dialog.exec():
+            self.load_data()  # Перезагрузка данных
 
     def edit_record(self, record):
         print(f"Изменение записи: {record}")
