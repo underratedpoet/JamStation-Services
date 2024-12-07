@@ -452,12 +452,45 @@ class DBController:
         
         # Формируем SQL-запрос
         query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
-        
+
         try:
             # Выполняем запрос с параметрами
-            self.execute_query(query, params=values, transactional=True)
+            self.execute_query(query, params=values)
+            self.connection.commit()
             self.logger.info(f"Record added to {table_name}: {record}")
         except Exception as e:
             self.logger.error(f"Failed to add record to {table_name}: {e}")
             raise
 
+    def update_record(self, table_name: str, record: dict, filters: dict):
+        """
+        Обновляет запись в указанной таблице на основе переданного словаря и фильтров.
+
+        :param table_name: Название таблицы.
+        :param record: Словарь со столбцами и значениями для обновления.
+        :param filters: Словарь с фильтрами для идентификации записей, которые нужно обновить.
+        :raises Exception: Если обновление не удалось.
+        """
+        if not record:
+            raise ValueError("Record dictionary cannot be empty.")
+        if not filters:
+            raise ValueError("Filters dictionary cannot be empty to prevent updating all rows.")
+
+        # Формируем строки для SET и WHERE частей запроса
+        set_clause = ", ".join([f"{key} = ?" for key in record.keys()])
+        where_clause = " AND ".join([f"{key} = ?" for key in filters.keys()])
+
+        # Объединяем значения для SET и WHERE
+        values = tuple(record.values()) + tuple(filters.values())
+
+        # Формируем SQL-запрос
+        query = f"UPDATE {table_name} SET {set_clause} WHERE {where_clause};"
+        print(query, values)
+        try:
+            # Выполняем запрос с параметрами
+            self.execute_query(query, params=values)
+            self.connection.commit()
+            self.logger.info(f"Record updated in {table_name}. SET: {record}, WHERE: {filters}")
+        except Exception as e:
+            self.logger.error(f"Failed to update record in {table_name}: {e}")
+            raise

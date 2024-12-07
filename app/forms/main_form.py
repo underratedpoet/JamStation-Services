@@ -12,6 +12,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.db_controller = db_controller
         self.employee_id = employee_id
+        self.location_id = self.db_controller.select(["location_id"], "Employees", employee_id)[0]
         self.current_offset = 0
         self.limit = 10
         self.column_filters = None
@@ -31,9 +32,9 @@ class MainWindow(QMainWindow):
         self.report_tab = ReportTab(self.db_controller)
         self.tab_widget.addTab(self.report_tab, "Отчеты")
 
-        self.accounting_tab = EquipmentInstrumentsTab(self.db_controller, self.employee_id)
+        self.accounting_tab = EquipmentInstrumentsTab(self.db_controller, self.employee_id, self.location_id)
         self.tab_widget.addTab(self.accounting_tab, "Оборудование и инструменты")
         
-        self.report_tab = ScheduleTab(self.db_controller)
+        self.report_tab = ScheduleTab(self.db_controller, self.location_id)
         self.tab_widget.addTab(self.report_tab, "Расписание")
 

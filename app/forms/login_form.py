@@ -47,7 +47,7 @@ class LoginWindow(QWidget):
             return
 
         if access:
-            employee_id = self.db_controller.select(['id'], 'Employees', None, {"login": login})[0]
+            employee_id = self.db_controller.select(['id'], 'Employees', None, {"login": login})[0][0]
             self.accept_login(employee_id)
         else:
             QMessageBox.critical(self, "Ошибка", "Неверный email или пароль!")

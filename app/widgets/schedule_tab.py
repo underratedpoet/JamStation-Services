@@ -11,10 +11,10 @@ from utils.controller import DBController
 from utils.shemas import ScheduleRecord
 
 class ScheduleTab(QWidget):
-    def __init__(self, db_controller: DBController):
+    def __init__(self, db_controller: DBController, location_id):
         super().__init__()
         self.db_controller = db_controller
-
+        self.location = self.db_controller.select(["id", "name"], "Locations", location_id)
         self.init_ui()
 
     def init_ui(self):
@@ -24,9 +24,7 @@ class ScheduleTab(QWidget):
         # Выбор локации
         location_layout = QHBoxLayout()
         location_layout.addWidget(QLabel("Локация:"))
-        self.location_selector = QComboBox()
-        self.location_selector.currentIndexChanged.connect(self.load_rooms)
-        location_layout.addWidget(self.location_selector)
+        location_layout.addWidget(QLabel(f"{self.location[1]}"))
 
         # Выбор зала
         room_layout = QHBoxLayout()
@@ -56,19 +54,10 @@ class ScheduleTab(QWidget):
         layout.addLayout(date_layout)
         layout.addWidget(self.scroll_area)
 
-
-        self.load_locations()
-
-    def load_locations(self):
-        query = "SELECT id, name FROM Locations"
-        locations = self.db_controller.execute_query(query)
-        self.location_selector.clear()
-        for location in locations:
-            self.location_selector.addItem(location[1], location[0])
-        self.load_rooms()  # Загрузить залы для первой локации по умолчанию
+        self.load_rooms()
 
     def load_rooms(self):
-        location_id = self.location_selector.currentData()
+        location_id = self.location[0]
         if location_id is not None:
             query = "SELECT id, name FROM Rooms WHERE location_id = ?"
             rooms = self.db_controller.execute_query(query, (location_id,))
@@ -79,7 +68,7 @@ class ScheduleTab(QWidget):
             self.load_schedule()  # Обновить расписание при изменении зала
 
     def load_schedule(self):
-        location_id = self.location_selector.currentData()
+        location_id = self.location[0]
         room_id = self.room_selector.currentData()
         qdate = self.date_selector.date()
         date = d(qdate.year(), qdate.month(), qdate.day())

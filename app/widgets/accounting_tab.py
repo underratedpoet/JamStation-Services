@@ -7,12 +7,14 @@ from pydantic import BaseModel
 
 from utils.controller import DBController
 from forms.add_record_form import AddRecordDialog
+from forms.edit_record_form import EditRecordDialog
 
 class EquipmentInstrumentsTab(QWidget):
-    def __init__(self, db_controller: DBController, employee_id):
+    def __init__(self, db_controller: DBController, employee_id, location_id):
         super().__init__()
         self.db_controller = db_controller
         self.employee_id = employee_id
+        self.location = self.db_controller.select(["id", "name"], "Locations", location_id)
         self.current_view = "Equipment"  # 'equipment' or 'instruments'
         self.current_table = "accounting"
         self.init_ui()
@@ -38,14 +40,13 @@ class EquipmentInstrumentsTab(QWidget):
 
         # Фильтры
         filter_layout = QHBoxLayout()
-        self.location_selector = QComboBox()
         self.room_selector = QComboBox()
         self.room_selector.setEnabled(False)  # Включается только для оборудования
-        self.load_locations()
-        self.location_selector.currentIndexChanged.connect(self.update_filters)
+        #self.load_locations()
         self.room_selector.currentIndexChanged.connect(self.load_data)
-        filter_layout.addWidget(QLabel("Локация:"))
-        filter_layout.addWidget(self.location_selector)
+        filter_layout.addWidget(QLabel(f"Локация: "))
+        filter_layout.addWidget(QLabel(f"{self.location[1]}"))
+        #filter_layout.addWidget(self.location_selector)
         filter_layout.addWidget(QLabel("Зал:"))
         filter_layout.addWidget(self.room_selector)
         layout.addLayout(filter_layout)
@@ -65,16 +66,10 @@ class EquipmentInstrumentsTab(QWidget):
 
         # Загрузка данных
         self.change_view()
-
-    def load_locations(self):
-        query = "SELECT id, name FROM Locations"
-        locations = self.db_controller.execute_query(query)
-        self.location_selector.clear()
-        for location in locations:
-            self.location_selector.addItem(location[1], location[0])
+        self.update_filters()
 
     def update_filters(self):
-        location_id = self.location_selector.currentData()
+        location_id = self.location[0]
         if self.current_view == "Equipment" and location_id is not None:
             query = "SELECT id, name FROM Rooms WHERE location_id = ?"
             rooms = self.db_controller.execute_query(query, (location_id,))
@@ -103,7 +98,7 @@ class EquipmentInstrumentsTab(QWidget):
         self.load_data()
 
     def load_data(self):
-        location_id = self.location_selector.currentData()
+        location_id = self.location[0]
         room_id = self.room_selector.currentData() if self.current_view == "Equipment" else None
         if self.current_table == "accounting":
             records = self.db_controller.load_accounting(self.current_view, location_id, room_id)
@@ -159,7 +154,7 @@ class EquipmentInstrumentsTab(QWidget):
 
     def add_record(self):
         # Открытие диалогового окна
-        location_id = self.location_selector.currentData()
+        location_id = self.location[0]
         room_id = self.room_selector.currentData() if self.current_view == "Equipment" else None
         if self.current_view == "Equipment" and room_id is None:
             QMessageBox.warning(self, "Ошибка", "Для добавления новго оборудования выберите зал.")
@@ -169,7 +164,21 @@ class EquipmentInstrumentsTab(QWidget):
             self.load_data()  # Перезагрузка данных
 
     def edit_record(self, record):
-        print(f"Изменение записи: {record}")
+        dialog = EditRecordDialog(record, self.db_controller, self)
+        if dialog.exec():
+            self.load_data()  # Перезагрузка данных
 
     def delete_record(self, record):
-        print(f"Удаление записи: {record}")
+        if self.current_table == "accounting":
+            if self.current_view == "Equipment":
+                table = "Equipment"
+            else:
+                table = "Instruments"
+        elif self.current_table == "checks":
+            table = "Checks"
+        else:
+            table = "Repairs"
+        self.db_controller.delete_by_id(table=table, id=record.id)
+        self.db_controller.connection.commit()
+        QMessageBox.information(self, "Успех", "Запись успешно удалена.")
+        self.load_data()

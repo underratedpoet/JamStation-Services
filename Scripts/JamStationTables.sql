@@ -185,7 +185,7 @@ CREATE TABLE Repairs (
     check_id INT NOT NULL FOREIGN KEY REFERENCES Checks(id),  -- Ссылка на проверку оборудования или инструмента
     repair_start_date DATETIME DEFAULT GETDATE(),   -- Дата начала ремонта (NULL, если не в ремонте)
     repair_end_date DATETIME,    -- Дата завершения ремонта (NULL, если ещё не завершён)
-    repair_status NVARCHAR(50) NOT NULL DEFAULT 'В процессе', -- Статус ремонта (in_progress, completed)
+    repair_status NVARCHAR(50) NOT NULL DEFAULT N'В процессе', -- Статус ремонта (in_progress, completed)
     legal_entity NVARCHAR(255) NOT NULL,  -- Юридическое лицо, куда сдается
     repair_cost DECIMAL(10, 2) NOT NULL  -- Цена ремонта
 );

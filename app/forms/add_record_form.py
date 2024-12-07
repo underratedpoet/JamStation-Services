@@ -116,7 +116,7 @@ class AddRecordDialog(QDialog):
                     shema = Equipment(
                         id=None,
                         name=self.input_name.text(),
-                        type=self.type,
+                        type=self.input_type.text(),
                         room_id=self.room[0],
                         status='OK'
                     )

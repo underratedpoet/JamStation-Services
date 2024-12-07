@@ -40,7 +40,7 @@ class AddRowDialog(QDialog):
             columns_str = ", ".join(self.table_columns)
             placeholders = ", ".join("?" for _ in self.table_columns)
             query = f"INSERT INTO {self.table_name} ({columns_str}) VALUES ({placeholders})"
-
+            print(query, values)
             # Выполняем запрос
             self.db_controller.execute_query(query, tuple(values))
             self.db_controller.connection.commit()
