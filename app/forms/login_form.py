@@ -47,11 +47,12 @@ class LoginWindow(QWidget):
             return
 
         if access:
-            self.accept_login()
+            employee_id = self.db_controller.select(['id'], 'Employees', None, {"login": login})[0]
+            self.accept_login(employee_id)
         else:
             QMessageBox.critical(self, "Ошибка", "Неверный email или пароль!")
 
-    def accept_login(self):
+    def accept_login(self, employee_id):
         self.hide()  # Скрыть окно авторизации
-        self.main_window = MainWindow(self.db_controller)
+        self.main_window = MainWindow(self.db_controller, employee_id)
         self.main_window.show()

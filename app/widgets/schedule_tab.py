@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date as d
 
 from PyQt6.QtWidgets import (
     QVBoxLayout, QWidget, QLabel, 
@@ -81,7 +81,8 @@ class ScheduleTab(QWidget):
     def load_schedule(self):
         location_id = self.location_selector.currentData()
         room_id = self.room_selector.currentData()
-        date = self.date_selector.date().toString("yyyy-MM-dd")
+        qdate = self.date_selector.date()
+        date = d(qdate.year(), qdate.month(), qdate.day())
         if location_id is not None:
             schedule = self.db_controller.load_schedule(location_id, date, room_id)
             self.display_schedule(schedule)

@@ -11,7 +11,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("static/icons8-music-band-16.png"))
     controller = DBController(server="localhost, 1433", database="JamStation", username="sa", password="YourStrong!Passw0rd")
-    main = MainWindow(controller)
+    main = MainWindow(controller, 2)
     main.show()
     #login = LoginWindow(controller)
     #login.show()

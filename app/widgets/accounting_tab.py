@@ -9,9 +9,10 @@ from utils.controller import DBController
 from forms.add_record_form import AddRecordDialog
 
 class EquipmentInstrumentsTab(QWidget):
-    def __init__(self, db_controller: DBController):
+    def __init__(self, db_controller: DBController, employee_id):
         super().__init__()
         self.db_controller = db_controller
+        self.employee_id = employee_id
         self.current_view = "Equipment"  # 'equipment' or 'instruments'
         self.current_table = "accounting"
         self.init_ui()
@@ -163,7 +164,7 @@ class EquipmentInstrumentsTab(QWidget):
         if self.current_view == "Equipment" and room_id is None:
             QMessageBox.warning(self, "Ошибка", "Для добавления новго оборудования выберите зал.")
             return
-        dialog = AddRecordDialog(self.current_view, self.current_table, location_id, room_id, self.db_controller, self)
+        dialog = AddRecordDialog(self.current_view, self.current_table, location_id, room_id, self.db_controller, self.employee_id, self)
         if dialog.exec():
             self.load_data()  # Перезагрузка данных
 

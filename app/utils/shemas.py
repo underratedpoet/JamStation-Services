@@ -40,7 +40,7 @@ class Consumable(BaseModel):
     quantity: int | None
     
 class Equipment(BaseModel):
-    id: int
+    id: int | None
     name: str
     type: str
     room_id: int
@@ -104,7 +104,7 @@ class Penalty(BaseModel):
 
 # Модель для таблицы Instruments
 class Instrument(BaseModel):
-    id: int
+    id: int | None
     location_id: int
     name: str
     hourly_rate: float
@@ -125,7 +125,7 @@ class Rental(BaseModel):
 
 # Модель для таблицы Checks
 class Check(BaseModel):
-    id: int
+    id: int | None
     employee_id: int
     item_id: int
     item_table: str
@@ -152,7 +152,7 @@ class KeyTransfer(BaseModel):
 
 # Модель для таблицы Repairs
 class Repair(BaseModel):
-    id: int
+    id: int | None
     check_id: int
     repair_start_date: datetime
     repair_end_date: datetime | None = None

@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 class DBController:
     def __init__(self, server: str, database: str, username: str, password: str):
-        self.connection_string = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}"
+        self.connection_string = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password};CHARSET=UTF8"
         self.connection = pyodbc.connect(self.connection_string, autocommit=False)
         self.logger = logging.getLogger(__name__)
         self.cursor = self.connection.cursor()
@@ -27,6 +27,14 @@ class DBController:
         try:
             if transactional and not self.transaction_active:
                 self.transaction_active = True
+
+                    # Обработка параметров: если параметр строковый, добавляем префикс N
+            #processed_params = []
+            #for param in params:
+            #    if isinstance(param, str):
+            #        processed_params.append(f"N'{param}'")  # Добавляем N перед строками
+            #    else:
+            #        processed_params.append(param)
 
             # Выполнение запроса
             result = self.connection.execute(query, params)
@@ -246,7 +254,7 @@ class DBController:
             self.logger.error(f"Error closing connection: {e}")
             raise
 
-    def select(self, columns: list[str] | None, table: str, id: int, filters: dict | None = None) -> list:
+    def select(self, columns: list[str] | None, table: str, id: int | None, filters: dict | None = None) -> list:
         if not columns:
             query = f"SELECT * FROM {table}"
         else:
@@ -258,6 +266,7 @@ class DBController:
         if id:
             if filters: query += f" AND id = {id}"
             else: query += f" WHERE id = {id}"
+        print(query)
         rows = self.execute_query(query)
         if id: return rows[0]
         return rows        
@@ -406,3 +415,49 @@ class DBController:
             )
             record_shemas.append(schedule_record)
         return record_shemas       
+    
+    def last_check(self, item_table, item_id):
+        last_check = self.execute_query(
+                    f"""
+                    SELECT TOP 1 id
+                    FROM Checks
+                    WHERE item_table = ? AND item_id = ?
+                    ORDER BY inspection_date DESC
+                    """,
+                    (item_table, item_id)
+                )
+        if len(last_check) == 0:
+            return None
+        return last_check[0][0]
+    
+    def add_record(self, table_name: str, record: BaseModel):
+        """
+        Добавляет запись в указанную таблицу на основе экземпляра класса BaseModel.
+
+        :param table_name: Название таблицы.
+        :param record: Экземпляр класса, наследующегося от BaseModel.
+        :raises Exception: Если добавление не удалось.
+        """
+        # Получаем словарь значений, исключая id, если он есть
+        record_dict = record.dict(exclude_unset=True)
+        
+        # Если столбец 'id' существует, удаляем его из данных для вставки
+        if 'id' in record_dict:
+            del record_dict['id']
+        
+        # Получаем список столбцов и значений для запроса
+        columns = ", ".join(record_dict.keys())
+        placeholders = ", ".join("?" for _ in record_dict.values())
+        values = tuple(record_dict.values())
+        
+        # Формируем SQL-запрос
+        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
+        
+        try:
+            # Выполняем запрос с параметрами
+            self.execute_query(query, params=values, transactional=True)
+            self.logger.info(f"Record added to {table_name}: {record}")
+        except Exception as e:
+            self.logger.error(f"Failed to add record to {table_name}: {e}")
+            raise
+

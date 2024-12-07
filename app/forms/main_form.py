@@ -8,10 +8,10 @@ from widgets.accounting_tab import EquipmentInstrumentsTab
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, db_controller: DBController):
+    def __init__(self, db_controller: DBController, employee_id):
         super().__init__()
         self.db_controller = db_controller
-
+        self.employee_id = employee_id
         self.current_offset = 0
         self.limit = 10
         self.column_filters = None
@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         self.report_tab = ReportTab(self.db_controller)
         self.tab_widget.addTab(self.report_tab, "Отчеты")
 
-        self.accounting_tab = EquipmentInstrumentsTab(self.db_controller)
+        self.accounting_tab = EquipmentInstrumentsTab(self.db_controller, self.employee_id)
         self.tab_widget.addTab(self.accounting_tab, "Оборудование и инструменты")
         
         self.report_tab = ScheduleTab(self.db_controller)
