@@ -59,27 +59,29 @@ class DBController:
                 self.transaction_active = False
             raise
 
-    def paginate_table(self, table_name: str, offset: int, limit: int, order_table: str | None = None, filters: dict = None):
+    def paginate_table(self, table_name: str, offset: int, limit: int, order_column: str | None = None, filters: dict = None, join_clause: str = ""):
         # Добавляем ORDER BY для корректного запроса в SQL Server
-        if order_table is None:
-            order_table = 'NULL'
+        if order_column is None:
+            order_column = 'NULL'
         
         # Формируем условия фильтрации
         filter_conditions = ""
         if filters:
-            filter_conditions = " AND ".join([f"{col} LIKE '%{val}%'" for col, val in filters.items()])
+            filter_conditions = " AND ".join([f"{col} = ?" for col in filters.keys()])
             filter_conditions = f"WHERE {filter_conditions}"
         
         query = f"""
         SELECT * 
         FROM {table_name}
+        {join_clause}
         {filter_conditions}
-        ORDER BY (SELECT {order_table})  -- Используйте реальный столбец для сортировки
+        ORDER BY (SELECT {order_column}) DESC
         OFFSET {offset} ROWS
         FETCH NEXT {limit} ROWS ONLY;
         """
         
-        rows = self.execute_query(query)
+        params = tuple(filters.values()) if filters else ()
+        rows = self.execute_query(query, params)
         columns = self.get_table_columns(table_name)
         
         # Преобразование кортежей в словари
@@ -494,3 +496,41 @@ class DBController:
         except Exception as e:
             self.logger.error(f"Failed to update record in {table_name}: {e}")
             raise
+
+    def select_all_receipts(self, location_id: int, offset: int = 0, limit: int = 10) -> list[ReceiptRecord]:
+        # Получение чеков с пагинацией и фильтрацией по локации через связь с таблицей Employees
+        join_clause = """
+        JOIN Employees e ON Receipts.employee_id = e.id
+        """
+        filters = {"e.location_id": location_id}
+        receipts_data = self.paginate_table("Receipts", offset, limit, "Receipts.created_at", filters, join_clause)
+
+        receipt_records = []
+        for receipt_data in receipts_data:
+            receipt = Receipt(
+                id=receipt_data["id"],
+                employee_id=receipt_data["employee_id"],
+                total_amount=receipt_data["total_amount"],
+                created_at=receipt_data["created_at"]
+            )
+
+            # Получение позиций для каждого чека
+            query_items = """
+            SELECT id, receipt_id, item_table, item_id, quantity, total
+            FROM Receipt_Items
+            WHERE receipt_id = ?
+            """
+            items_data = self.execute_query(query_items, (receipt.id,))
+            items = [Receipt_Item(
+                id=item[0],
+                receipt_id=item[1],
+                item_table=item[2],
+                item_id=item[3],
+                quantity=item[4],
+                total=item[5]
+            ) for item in items_data]
+
+            receipt_record = ReceiptRecord(receipt=receipt, items=items)
+            receipt_records.append(receipt_record)
+
+        return receipt_records

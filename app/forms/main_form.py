@@ -5,6 +5,7 @@ from widgets.edit_tab import EditTab
 from widgets.report_tab import ReportTab
 from widgets.schedule_tab import ScheduleTab
 from widgets.accounting_tab import EquipmentInstrumentsTab
+from widgets.receipt_tab import ReceiptTab
 
 
 class MainWindow(QMainWindow):
@@ -37,4 +38,7 @@ class MainWindow(QMainWindow):
         
         self.report_tab = ScheduleTab(self.db_controller, self.location_id)
         self.tab_widget.addTab(self.report_tab, "Расписание")
+
+        self.receipt_tab = ReceiptTab(self.db_controller, self.employee_id)
+        self.tab_widget.addTab(self.receipt_tab, "Чеки")
 

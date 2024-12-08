@@ -93,6 +93,10 @@ class Receipt_Item(BaseModel):
     quantity: int | None = None
     total: float
 
+class ReceiptRecord(BaseModel):
+    receipt: Receipt
+    items: list[Receipt_Item]
+
 # Модель для таблицы Penalties
 class Penalty(BaseModel):
     id: int
