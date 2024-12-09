@@ -69,4 +69,4 @@ def fill_schedules(room_id: int):
     print("Schedules table has been filled.")
 
 # Пример вызова функции
-fill_schedules(2)
+fill_schedules(3)
