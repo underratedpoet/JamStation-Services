@@ -4,6 +4,7 @@ from datetime import datetime
 
 from utils.controller import DBController
 from utils.shemas import Receipt, Receipt_Item, ReceiptRecord
+from forms.add_receipt_form import AddReceiptDialog
 
 class ReceiptTab(QWidget):
     def __init__(self, db_controller: DBController, employee_id):
@@ -34,10 +35,15 @@ class ReceiptTab(QWidget):
 
         self.setLayout(layout)
 
-    def load_receipts(self, offset=0, limit=10):
+    def load_receipts(self, offset=0, limit=1000):
+        for i in reversed(range(self.scroll_layout.count())):
+            widget = self.scroll_layout.itemAt(i).widget()
+            if widget:
+                widget.deleteLater()
+
         # Получение данных из БД
-        location_id = self.employee[1]
-        receipts = self.db_controller.select_all_receipts(location_id, offset, limit)
+        self.location_id = self.employee[1]
+        receipts = self.db_controller.select_all_receipts(self.location_id, offset, limit)
 
         for receipt_record in receipts:
             self.add_receipt_tile(receipt_record)
@@ -97,5 +103,6 @@ class ReceiptTab(QWidget):
                     child.widget().deleteLater()
 
     def new_receipt(self):
-        # Метод для создания нового чека (пока пустой)
-        pass
+        dialog = AddReceiptDialog(self.location_id, self.employee[0], self.db_controller, self)
+        if dialog.exec():
+            self.load_receipts()  # Перезагрузка данных

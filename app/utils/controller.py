@@ -67,7 +67,7 @@ class DBController:
         # Формируем условия фильтрации
         filter_conditions = ""
         if filters:
-            filter_conditions = " AND ".join([f"{col} = ?" for col in filters.keys()])
+            filter_conditions = " AND ".join([f"{col} LIKE '%{val}%'" for col, val in filters.items()])
             filter_conditions = f"WHERE {filter_conditions}"
         
         query = f"""
@@ -80,8 +80,7 @@ class DBController:
         FETCH NEXT {limit} ROWS ONLY;
         """
         
-        params = tuple(filters.values()) if filters else ()
-        rows = self.execute_query(query, params)
+        rows = self.execute_query(query)
         columns = self.get_table_columns(table_name)
         
         # Преобразование кортежей в словари
@@ -191,7 +190,6 @@ class DBController:
 
             # Генерация строки EXEC с плейсхолдерами для параметров
             exec_query = f"EXEC {proc_name} {', '.join(exec_placeholders)};"
-            print(exec_query)
 
             # Выполняем запрос
             self.execute_query(
@@ -256,22 +254,34 @@ class DBController:
             self.logger.error(f"Error closing connection: {e}")
             raise
 
-    def select(self, columns: list[str] | None, table: str, id: int | None, filters: dict | None = None) -> list:
+    def select(self, columns: list[str] | None, table: str, id: int | None = None, filters: dict | None = None) -> list:
         if not columns:
             query = f"SELECT * FROM {table}"
         else:
             selected_columns = ", ".join(columns)
             query = f"SELECT {selected_columns} FROM {table}"
+        
         if filters:
-            filter_conditions = " AND ".join([f"{col} LIKE '%{val}%'" for col, val in filters.items()])
+            filter_conditions = " AND ".join([f"{col} = ?" for col in filters.keys()])
             query += f" WHERE {filter_conditions}"
+            
         if id:
-            if filters: query += f" AND id = {id}"
-            else: query += f" WHERE id = {id}"
-        print(query)
-        rows = self.execute_query(query)
-        if id: return rows[0]
-        return rows        
+            if filters:
+                query += f" AND id = ?"
+            else:
+                query += f" WHERE id = ?"
+
+        # Преобразуем словарь значений в кортеж
+        params = tuple(filters.values()) if filters else ()
+
+        # Добавляем id в параметры, если оно есть
+        if id:
+            params += (id,)
+
+        rows = self.execute_query(query, params)
+        if id:
+            return rows[0]
+        return rows
     
     def delete_by_id(self, table: str, id: int) -> int:
         query = f'DELETE FROM {table} WHERE id = {id}'
@@ -487,7 +497,7 @@ class DBController:
 
         # Формируем SQL-запрос
         query = f"UPDATE {table_name} SET {set_clause} WHERE {where_clause};"
-        print(query, values)
+
         try:
             # Выполняем запрос с параметрами
             self.execute_query(query, params=values)
@@ -534,3 +544,33 @@ class DBController:
             receipt_records.append(receipt_record)
 
         return receipt_records
+    
+    def insert(self, table: str, data: dict):
+        """
+        Выполняет вставку данных в указанную таблицу и возвращает ID вставленной записи.
+        
+        :param table: имя таблицы, куда вставлять данные.
+        :param data: словарь данных для вставки, где ключи - это имена столбцов, а значения - данные для вставки.
+        :return: ID вставленной записи.
+        """
+        columns = ', '.join(data.keys())
+        values = ', '.join(['?' for _ in data])
+        output_clause = "OUTPUT INSERTED.id"  # Предполагается, что идентификатор называется "id"
+        query = f"INSERT INTO {table} ({columns}) {output_clause} VALUES ({values})"
+
+        cursor = self.connection.cursor()
+        
+        try:
+            cursor.execute(query, tuple(data.values()))
+            result = cursor.fetchone()
+            self.connection.commit()
+            if result:
+                return result[0]
+            else:
+                raise ValueError("Не удалось получить ID вставленной записи.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Ошибка при выполнении вставки: {e}")
+            raise
+        finally:
+            cursor.close()
