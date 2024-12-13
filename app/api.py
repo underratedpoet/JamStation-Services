@@ -1,8 +1,8 @@
 import os
 from datetime import datetime, timedelta
 
-from fastapi import FastAPI, Request, HTTPException, Form
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi import FastAPI, Request, HTTPException, Form, UploadFile, File, WebSocket
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -128,6 +128,53 @@ async def book_room(request: Request, room_id: int, name: str = Form(...), phone
         status_code=200
     )
 
+
+messages = []
+active_connections = []
+
+@app.get("/chat/admin", response_class=HTMLResponse)
+async def get_admin_chat(request: Request):
+    return templates.TemplateResponse("admin_chat.html", {"request": request, "messages": messages})
+
+@app.post("/chat/admin/send_file")
+async def send_file(request: Request, file: UploadFile = File(...)):
+    file_location = f"static/uploads/{file.filename}"
+    with open(file_location, "wb+") as file_object:
+        file_object.write(file.file.read())
+    messages.append({"username": "admin", "message": None, "file": file.filename})
+    await notify_clients()
+    return templates.TemplateResponse("admin_chat.html", {"request": request, "messages": messages})
+
+@app.get("/chat/mngr", response_class=HTMLResponse)
+async def get_mngr_chat(request: Request):
+    return templates.TemplateResponse("mngr_chat.html", {"request": request, "messages": messages})
+
+@app.post("/chat/mngr/send_message")
+async def send_message(request: Request, message: str = Form(...)):
+    messages.append({"username": "mngr", "message": message, "file": None})
+    await notify_clients()
+    return templates.TemplateResponse("mngr_chat.html", {"request": request, "messages": messages})
+
+@app.get("/download/{file_name}")
+async def download_file(file_name: str):
+    file_path = f"static/uploads/{file_name}"
+    return FileResponse(path=file_path, filename=file_name)
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except Exception as e:
+        print(f"Connection error: {e}")
+    finally:
+        active_connections.remove(websocket)
+
+async def notify_clients():
+    for connection in active_connections:
+        await connection.send_json(messages)
 
 if __name__ == "__main__":
     # Запуск FastAPI через uvicorn

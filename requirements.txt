@@ -9,3 +9,4 @@ uvicorn
 jinja2
 python-multipart
 python-docx
+websockets

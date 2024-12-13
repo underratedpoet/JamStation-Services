@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manager Chat</title>
+    <script src="/static/js/chat.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <link type="image/png" sizes="16x16" rel="icon" href="/static/icons8-music-band-16.png">
+</head>
+<body>
+    <h1>Manager Chat</h1>
+    <form action="/chat/mngr/send_message" method="post">
+        <label for="message">Message:</label>
+        <input type="text" id="message" name="message" required>
+        <br>
+        <button type="submit">Send Message</button>
+    </form>
+    <h2>Messages</h2>
+    <ul id="messages">
+        {% for msg in messages %}
+            <li>
+                <strong>{{ msg.username }}:</strong> {{ msg.message }}
+                {% if msg.file %}
+                    <a href="/download/{{ msg.file }}">Download {{ msg.file }}</a>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
