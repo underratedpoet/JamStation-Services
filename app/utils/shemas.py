@@ -59,6 +59,13 @@ class Client(BaseModel):
     phone_number: str
     email: str | None = None
 
+class ClientRecord(BaseModel):
+    id: int
+    name: str
+    phone_number: str
+    email: str | None = None
+    has_penalties: bool = False
+
 # Модель для таблицы Schedules
 class Schedule(BaseModel):
     id: int

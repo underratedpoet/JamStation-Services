@@ -574,3 +574,142 @@ class DBController:
             raise
         finally:
             cursor.close()
+
+    def get_clients_by_location(self, location_id: int) -> list[ClientRecord]:
+        """
+        Получает список клиентов, связанных с указанной локацией через расписание и комнаты.
+
+        :param location_id: ID локации.
+        :return: Список объектов ClientRecord.
+        """
+        query = """
+        SELECT DISTINCT 
+            c.id AS client_id,
+            c.name AS client_name,
+            c.phone_number AS client_phone,
+            c.email AS client_email,
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 
+                    FROM Penalties p 
+                    WHERE p.client_id = c.id AND p.written_off IS NULL
+                ) THEN 1
+                ELSE 0
+            END AS has_penalties
+        FROM Clients c
+        INNER JOIN Schedules s ON s.client_id = c.id
+        INNER JOIN Rooms r ON s.room_id = r.id
+        WHERE r.location_id = ?
+        """
+        
+        try:
+            rows = self.execute_query(query, (location_id,))
+            clients = [
+                ClientRecord(
+                    id=row[0],
+                    name=row[1],
+                    phone_number=row[2],
+                    email=row[3],
+                    has_penalties=bool(row[4])
+                )
+                for row in rows
+            ]
+            return clients
+        except Exception as e:
+            self.logger.error(f"Error fetching clients by location: {e}")
+            raise
+
+    def get_penalties_by_client(self, client_id: int) -> list[Penalty]:
+        """
+        Получает список штрафов для указанного клиента.
+
+        :param client_id: ID клиента.
+        :return: Список объектов Penalty.
+        """
+        query = """
+        SELECT 
+            id,
+            client_id,
+            description,
+            amount,
+            applied_at,
+            written_off
+        FROM Penalties
+        WHERE client_id = ?
+        """
+        
+        try:
+            rows = self.execute_query(query, (client_id,))
+            penalties = [
+                Penalty(
+                    id=row[0],
+                    client_id=row[1],
+                    description=row[2],
+                    amount=row[3],
+                    applied_at=row[4],
+                    written_off=row[5]
+                )
+                for row in rows
+            ]
+            return penalties
+        except Exception as e:
+            self.logger.error(f"Error fetching penalties for client {client_id}: {e}")
+            raise
+
+    def write_off_penalty(self, penalty_id: int) -> None:
+        """
+        Списывает штраф по его ID, если он ещё не списан.
+
+        :param penalty_id: ID штрафа.
+        """
+        query_check = """
+        SELECT written_off
+        FROM Penalties
+        WHERE id = ?
+        """
+
+        query_update = """
+        UPDATE Penalties
+        SET written_off = ?
+        WHERE id = ? AND written_off IS NULL
+        """
+
+        try:
+            # Проверяем, есть ли уже дата списания
+            result = self.execute_query(query_check, (penalty_id,))
+            if not result:
+                raise ValueError(f"Penalty with ID {penalty_id} not found.")
+
+            written_off = result[0][0]
+            if written_off is not None:
+                raise ValueError(f"Penalty with ID {penalty_id} is already written off.")
+
+            # Обновляем поле written_off текущим временем
+            current_time = datetime.now()
+            self.execute_query(query_update, (current_time, penalty_id), transactional=True)
+            self.logger.info(f"Penalty with ID {penalty_id} successfully written off at {current_time}.")
+
+            return 0
+        except Exception as e:
+            self.logger.error(f"Error writing off penalty with ID {penalty_id}: {e}")
+            raise
+
+    def add_penalty_for_client(self, client_id: int, description: str, amount: float) -> bool:
+        """
+        Добавляет штраф клиенту.
+        :param client_id: ID клиента.
+        :param description: Описание штрафа.
+        :param amount: Сумма штрафа.
+        :return: True, если штраф успешно добавлен, иначе False.
+        """
+        query = """
+            INSERT INTO Penalties (client_id, description, amount, applied_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        """
+        try:
+            self.execute_query(query, (client_id, description, amount))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при добавлении штрафа: {e}")
+            return False
