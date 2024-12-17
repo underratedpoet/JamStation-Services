@@ -289,6 +289,101 @@ class DBController:
         if result == 0: return 0
         else: return 1
 
+    def insert(self, table: str, data: dict):
+        """
+        Выполняет вставку данных в указанную таблицу и возвращает ID вставленной записи.
+        
+        :param table: имя таблицы, куда вставлять данные.
+        :param data: словарь данных для вставки, где ключи - это имена столбцов, а значения - данные для вставки.
+        :return: ID вставленной записи.
+        """
+        columns = ', '.join(data.keys())
+        values = ', '.join(['?' for _ in data])
+        output_clause = "OUTPUT INSERTED.id"  # Предполагается, что идентификатор называется "id"
+        query = f"INSERT INTO {table} ({columns}) {output_clause} VALUES ({values})"
+
+        cursor = self.connection.cursor()
+        
+        try:
+            cursor.execute(query, tuple(data.values()))
+            result = cursor.fetchone()
+            self.connection.commit()
+            if result:
+                return result[0]
+            else:
+                raise ValueError("Не удалось получить ID вставленной записи.")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Ошибка при выполнении вставки: {e}")
+            raise
+        finally:
+            cursor.close()
+
+    def add_record(self, table_name: str, record: BaseModel):
+        """
+        Добавляет запись в указанную таблицу на основе экземпляра класса BaseModel.
+
+        :param table_name: Название таблицы.
+        :param record: Экземпляр класса, наследующегося от BaseModel.
+        :raises Exception: Если добавление не удалось.
+        """
+        # Получаем словарь значений, исключая id, если он есть
+        record_dict = record.dict(exclude_unset=True)
+        
+        # Если столбец 'id' существует, удаляем его из данных для вставки
+        if 'id' in record_dict:
+            del record_dict['id']
+        
+        # Получаем список столбцов и значений для запроса
+        columns = ", ".join(record_dict.keys())
+        placeholders = ", ".join("?" for _ in record_dict.values())
+        values = tuple(record_dict.values())
+        
+        # Формируем SQL-запрос
+        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
+
+        try:
+            # Выполняем запрос с параметрами
+            self.execute_query(query, params=values)
+            self.connection.commit()
+            self.logger.info(f"Record added to {table_name}: {record}")
+        except Exception as e:
+            self.logger.error(f"Failed to add record to {table_name}: {e}")
+            raise
+
+    def update_record(self, table_name: str, record: dict, filters: dict):
+        """
+        Обновляет запись в указанной таблице на основе переданного словаря и фильтров.
+
+        :param table_name: Название таблицы.
+        :param record: Словарь со столбцами и значениями для обновления.
+        :param filters: Словарь с фильтрами для идентификации записей, которые нужно обновить.
+        :raises Exception: Если обновление не удалось.
+        """
+        if not record:
+            raise ValueError("Record dictionary cannot be empty.")
+        if not filters:
+            raise ValueError("Filters dictionary cannot be empty to prevent updating all rows.")
+
+        # Формируем строки для SET и WHERE частей запроса
+        set_clause = ", ".join([f"{key} = ?" for key in record.keys()])
+        where_clause = " AND ".join([f"{key} = ?" for key in filters.keys()])
+
+        # Объединяем значения для SET и WHERE
+        values = tuple(record.values()) + tuple(filters.values())
+
+        # Формируем SQL-запрос
+        query = f"UPDATE {table_name} SET {set_clause} WHERE {where_clause};"
+
+        try:
+            # Выполняем запрос с параметрами
+            self.execute_query(query, params=values)
+            self.connection.commit()
+            self.logger.info(f"Record updated in {table_name}. SET: {record}, WHERE: {filters}")
+        except Exception as e:
+            self.logger.error(f"Failed to update record in {table_name}: {e}")
+            raise
+
     def load_schedule(self, location_id, date, room_id) -> list[ScheduleRecord]:
         query = """
         SELECT S.id, R.name, C.name, S.start_time, S.duration_hours, S.is_paid, S.status
@@ -441,71 +536,6 @@ class DBController:
         if len(last_check) == 0:
             return None
         return last_check[0][0]
-    
-    def add_record(self, table_name: str, record: BaseModel):
-        """
-        Добавляет запись в указанную таблицу на основе экземпляра класса BaseModel.
-
-        :param table_name: Название таблицы.
-        :param record: Экземпляр класса, наследующегося от BaseModel.
-        :raises Exception: Если добавление не удалось.
-        """
-        # Получаем словарь значений, исключая id, если он есть
-        record_dict = record.dict(exclude_unset=True)
-        
-        # Если столбец 'id' существует, удаляем его из данных для вставки
-        if 'id' in record_dict:
-            del record_dict['id']
-        
-        # Получаем список столбцов и значений для запроса
-        columns = ", ".join(record_dict.keys())
-        placeholders = ", ".join("?" for _ in record_dict.values())
-        values = tuple(record_dict.values())
-        
-        # Формируем SQL-запрос
-        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
-
-        try:
-            # Выполняем запрос с параметрами
-            self.execute_query(query, params=values)
-            self.connection.commit()
-            self.logger.info(f"Record added to {table_name}: {record}")
-        except Exception as e:
-            self.logger.error(f"Failed to add record to {table_name}: {e}")
-            raise
-
-    def update_record(self, table_name: str, record: dict, filters: dict):
-        """
-        Обновляет запись в указанной таблице на основе переданного словаря и фильтров.
-
-        :param table_name: Название таблицы.
-        :param record: Словарь со столбцами и значениями для обновления.
-        :param filters: Словарь с фильтрами для идентификации записей, которые нужно обновить.
-        :raises Exception: Если обновление не удалось.
-        """
-        if not record:
-            raise ValueError("Record dictionary cannot be empty.")
-        if not filters:
-            raise ValueError("Filters dictionary cannot be empty to prevent updating all rows.")
-
-        # Формируем строки для SET и WHERE частей запроса
-        set_clause = ", ".join([f"{key} = ?" for key in record.keys()])
-        where_clause = " AND ".join([f"{key} = ?" for key in filters.keys()])
-
-        # Объединяем значения для SET и WHERE
-        values = tuple(record.values()) + tuple(filters.values())
-
-        # Формируем SQL-запрос
-        query = f"UPDATE {table_name} SET {set_clause} WHERE {where_clause};"
-
-        try:
-            # Выполняем запрос с параметрами
-            self.execute_query(query, params=values)
-            self.connection.commit()
-            self.logger.info(f"Record updated in {table_name}. SET: {record}, WHERE: {filters}")
-        except Exception as e:
-            self.logger.error(f"Failed to update record in {table_name}: {e}")
-            raise
 
     def select_all_receipts(self, location_id: int, offset: int = 0, limit: int = 10) -> list[ReceiptRecord]:
         # Получение чеков с пагинацией и фильтрацией по локации через связь с таблицей Employees
@@ -544,36 +574,6 @@ class DBController:
             receipt_records.append(receipt_record)
 
         return receipt_records
-    
-    def insert(self, table: str, data: dict):
-        """
-        Выполняет вставку данных в указанную таблицу и возвращает ID вставленной записи.
-        
-        :param table: имя таблицы, куда вставлять данные.
-        :param data: словарь данных для вставки, где ключи - это имена столбцов, а значения - данные для вставки.
-        :return: ID вставленной записи.
-        """
-        columns = ', '.join(data.keys())
-        values = ', '.join(['?' for _ in data])
-        output_clause = "OUTPUT INSERTED.id"  # Предполагается, что идентификатор называется "id"
-        query = f"INSERT INTO {table} ({columns}) {output_clause} VALUES ({values})"
-
-        cursor = self.connection.cursor()
-        
-        try:
-            cursor.execute(query, tuple(data.values()))
-            result = cursor.fetchone()
-            self.connection.commit()
-            if result:
-                return result[0]
-            else:
-                raise ValueError("Не удалось получить ID вставленной записи.")
-        except Exception as e:
-            self.connection.rollback()
-            print(f"Ошибка при выполнении вставки: {e}")
-            raise
-        finally:
-            cursor.close()
 
     def get_clients_by_location(self, location_id: int) -> list[ClientRecord]:
         """
@@ -713,3 +713,26 @@ class DBController:
         except Exception as e:
             print(f"Ошибка при добавлении штрафа: {e}")
             return False
+        
+    def get_consumables_by_location(self, location_id: int) -> list[Consumable]:
+        rows = self.select(["id", "location", "name", "quantity"], "Consumables", filters={"location_id": location_id})
+        return [Consumable(**dict(row)) for row in rows]
+
+    def add_consumable_quantity(self, consumable_id: int, quantity_to_add: int) -> bool:
+        """
+        Увеличить количество расходников на указанное значение.
+        :param consumable_id: ID расходника.
+        :param quantity_to_add: Количество для добавления.
+        :return: Успешность операции (True/False).
+        """
+        query = """
+            UPDATE Consumables
+            SET quantity = quantity + ?
+            WHERE id = ? AND quantity + ? >= 0
+        """
+        result = self.connection.execute(query, (quantity_to_add, consumable_id, quantity_to_add))
+        self.connection.commit()
+        return result.rowcount > 0
+
+    def create_consumable(self, location_id: int, name: str, price: float, quantity: int):
+        self.insert("Consumables", {"location_id":location_id, "name":name, "price":price, "quantity":quantity})
