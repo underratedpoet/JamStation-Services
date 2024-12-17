@@ -7,7 +7,8 @@ body {
     justify-content: center;
     align-items: center;
     
-    flex-direction: column
+    flex-direction: column;
+    width: 95%;
 }
 
 h1, h2 {
@@ -40,7 +41,7 @@ input, select, textarea {
     border: 1px solid #ccc;
     border-radius: 4px;
 }
-
+/*5cb85c*/
 button, #welcome-book {
     background-color: #5cb85c;
     color: white;
@@ -52,7 +53,7 @@ button, #welcome-book {
 }
 
 button:hover, #welcome-book:hover {
-    background-color: #4cae4c;
+    background-color: #3d793d;
 }
 
 .container {
@@ -63,7 +64,10 @@ button:hover, #welcome-book:hover {
     justify-content: center;
     align-items: center;
     
-    flex-direction: column
+    flex-direction: column;
+    width: 100%;
+    
+    
 }
 
 .container a {
@@ -74,6 +78,8 @@ button:hover, #welcome-book:hover {
     border-radius: 5px;
     background-color: #f9f9f9;
     transition: background-color 0.3s;
+    width: 80%;
+    text-align: left;
 }
 
 .container a:hover {

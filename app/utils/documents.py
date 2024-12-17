@@ -17,3 +17,12 @@ def save_report_to_docx(equipment_data, checks_data, stats_data, comments, file_
     doc.add_paragraph(comments)
 
     doc.save(file_path)
+
+def save_standart_report_to_docx(comments, file_path, emp_id):
+    doc = Document()
+    doc.add_heading('Стандвртный отчет', 0)
+
+    doc.add_heading(f'Сотрудник ID: {emp_id}', level=1)
+    doc.add_paragraph(comments)
+
+    doc.save(file_path)    

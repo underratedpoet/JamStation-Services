@@ -9,6 +9,11 @@
         <h1>Зал {{ room.name }}</h1>
         <p>Вместипость: {{ room.capacity }} чел.</p>
         <p>Стоимость (в час): {{ room.hourly_rate }}₽</p>
+
+        <h2>Оборудование</h2>
+        {% for eq in equipment %}
+        <p>{{ eq.name }}</p>
+        {% endfor %}
     
         <h2>Забронировать этот зал</h2>
         <form action="/book/{{ room_id }}" method="post">

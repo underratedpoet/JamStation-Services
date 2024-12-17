@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
         self.edit_tab = EditTab(self.db_controller)
         self.tab_widget.addTab(self.edit_tab, "Прямое редактирование")
 
-        self.report_tab = ReportTab(self.db_controller)
+        self.report_tab = ReportTab(self.db_controller, self.employee_id)
         self.tab_widget.addTab(self.report_tab, "Отчеты")
 
         self.accounting_tab = EquipmentInstrumentsTab(self.db_controller, self.employee_id, self.location_id)

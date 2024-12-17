@@ -28,24 +28,27 @@ async def list_locations(request: Request):
 
 @app.get("/locations", response_class=HTMLResponse)
 async def list_locations(request: Request):
-    query = "SELECT id, name FROM Locations"
+    query = "SELECT id, name, address, phone_number, email FROM Locations"
     locations = db_controller.execute_query(query)
+    print(locations)
     return templates.TemplateResponse("locations.html", {"request": request, "locations": locations})
 
 
 @app.get("/rooms/{location_id}", response_class=HTMLResponse)
 async def list_rooms(request: Request, location_id: int):
-    query = "SELECT id, name FROM Rooms WHERE location_id = ?"
+    query = "SELECT id, name, capacity, hourly_rate FROM Rooms WHERE location_id = ?"
     rooms = db_controller.execute_query(query, (location_id,))
     return templates.TemplateResponse("rooms.html", {"request": request, "rooms": rooms, "location_id": location_id})
 
 @app.get("/room/{room_id}", response_class=HTMLResponse)
 async def room_info(request: Request, room_id: int):
     query = "SELECT name, capacity, hourly_rate FROM Rooms WHERE id = ?"
+    query_eq = "SELECT name FROM Equipment WHERE room_id = ?"
     room = db_controller.execute_query(query, (room_id,))
+    equipment = db_controller.execute_query(query_eq, (room_id,))
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    return templates.TemplateResponse("room.html", {"request": request, "room": room[0], "room_id": room_id})
+    return templates.TemplateResponse("room.html", {"request": request, "room": room[0], "equipment": equipment, "room_id": room_id})
 
 @app.get("/available_times/{room_id}/{date}", response_class=HTMLResponse)
 async def available_times(request: Request, room_id: int, date: str):

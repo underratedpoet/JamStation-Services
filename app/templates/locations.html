@@ -9,7 +9,11 @@
         <h1>Наши репетиционные точки</h1>
         <div class="container">
             {% for location in locations %}
-                <a href="/rooms/{{ location.id }}">{{ location.name }}</a>
+                <a href="/rooms/{{ location.id }}">
+                    <h3>{{ location.name }}</h3>
+                    <h4>Адрес: {{ location.address }}</h4>
+                    <h5>Контакты: телефон - {{ location.phone_number }}, эл. почта - {{ location.email }}</h5>
+                </a>
             {% endfor %}
         </div>
     </body>
