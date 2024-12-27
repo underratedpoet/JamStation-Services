@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Available Halls</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <link type="image/png" sizes="16x16" rel="icon" href="/static/icons8-music-band-16.png">
+</head>
+<body>
+    <h1>Available Halls</h1>
+    <form action="/select_hall" method="post">
+        <input type="hidden" name="date" value="{{ date }}">
+        <input type="hidden" name="time" value="{{ time }}">
+        <label for="hall_id">Select a Hall:</label>
+        <select id="hall_id" name="hall_id" required>
+            {% for hall in available_halls %}
+                <option value="{{ hall.id }}">{{ hall.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Next</button>
+    </form>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment Information</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <link type="image/png" sizes="16x16" rel="icon" href="/static/icons8-music-band-16.png">
+</head>
+<body>
+    <h1>Enter Your Payment Information</h1>
+    <h2>Price: {{ price }}</h2>
+    <form action="/process_payment" method="post">
+        <input type="hidden" name="hall_id" value="{{ hall_id }}">
+        <input type="hidden" name="date" value="{{ date }}">
+        <input type="hidden" name="time" value="{{ time }}">
+        <input type="hidden" name="client_id" value="{{ client_id }}">
+        <label for="card_number">Card Number:</label>
+        <input type="text" id="card_number" name="card_number" required>
+        <label for="card_expiry">Card Expiry:</label>
+        <input type="text" id="card_expiry" name="card_expiry" required>
+        <label for="card_cvc">Card CVC:</label>
+        <input type="text" id="card_cvc" name="card_cvc" required>
+        <button type="submit">Pay</button>
+    </form>
+</body>
+</html>

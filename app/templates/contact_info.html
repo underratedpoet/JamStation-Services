@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contact Information</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <link type="image/png" sizes="16x16" rel="icon" href="/static/icons8-music-band-16.png">
+</head>
+<body>
+    <h1>Enter Your Contact Information</h1>
+    <form action="/submit_contact_info" method="post">
+        <input type="hidden" name="hall_id" value="{{ hall_id }}">
+        <input type="hidden" name="date" value="{{ date }}">
+        <input type="hidden" name="time" value="{{ time }}">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+        <label for="phone">Phone:</label>
+        <input type="text" id="phone" name="phone" required>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email">
+        <button type="submit">Next</button>
+    </form>
+</body>
+</html>

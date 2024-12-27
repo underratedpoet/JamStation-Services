@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+import random
 
 from fastapi import FastAPI, Request, HTTPException, Form, UploadFile, File, WebSocket
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
@@ -178,6 +179,68 @@ async def websocket_endpoint(websocket: WebSocket):
 async def notify_clients():
     for connection in active_connections:
         await connection.send_json(messages)
+
+
+
+
+@app.get("/home", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
+
+@app.get("/book_hall", response_class=HTMLResponse)
+async def book_hall(request: Request):
+    return templates.TemplateResponse("book_hall.html", {"request": request})
+
+@app.post("/check_availability", response_class=HTMLResponse)
+async def check_availability(request: Request, date: str = Form(...), time: str = Form(...)):
+    date_time = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+    query = """
+        SELECT id, name 
+        FROM Rooms 
+        WHERE id NOT IN (
+            SELECT room_id 
+            FROM Schedules 
+            WHERE start_time = ?
+        )
+    """
+    available_halls = db_controller.execute_query(query, (date_time,))
+    return templates.TemplateResponse("available_halls.html", {"request": request, "available_halls": available_halls, "date": date, "time": time})
+
+@app.post("/select_hall", response_class=HTMLResponse)
+async def select_hall(request: Request, hall_id: int = Form(...), date: str = Form(...), time: str = Form(...)):
+    return templates.TemplateResponse("contact_info.html", {"request": request, "hall_id": hall_id, "date": date, "time": time})
+
+@app.post("/submit_contact_info", response_class=HTMLResponse)
+async def submit_contact_info(request: Request, hall_id: int = Form(...), date: str = Form(...), time: str = Form(...), name: str = Form(...), phone: str = Form(...), email: str = Form(...)):
+    query = "SELECT id FROM Clients WHERE phone_number = ?"
+    client = db_controller.execute_query(query, (phone,))
+    if client:
+        client_id = client[0][0]
+        query = "SELECT id FROM Penalties WHERE client_id = ? AND written_off IS NULL"
+        penalties = db_controller.execute_query(query, (client_id,))
+        if penalties:
+            return templates.TemplateResponse("penalties.html", {"request": request})
+    else:
+        query = "INSERT INTO Clients (name, phone_number, email) VALUES (?, ?, ?)"
+        db_controller.execute_query(query, (name, phone, email), transactional=True)
+        query = "SELECT id FROM Clients WHERE phone_number = ?"
+        client_id = db_controller.execute_query(query, (phone,))[0][0]
+    price = db_controller.select(['hourly_rate'], 'Rooms', hall_id)
+    return templates.TemplateResponse("payment_info.html", {"request": request, "hall_id": hall_id, "date": date, "time": time, "client_id": client_id, "price": str(price[0])})
+
+@app.post("/process_payment", response_class=HTMLResponse)
+async def process_payment(request: Request, hall_id: int = Form(...), date: str = Form(...), time: str = Form(...), client_id: int = Form(...), card_number: str = Form(...), card_expiry: str = Form(...), card_cvc: str = Form(...)):
+
+    if random.random() > 0.2:
+        start_time = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+        query = "INSERT INTO Schedules (room_id, client_id, start_time, duration_hours, is_paid, status) VALUES (?, ?, ?, ?, 1, 'Активно')"
+        db_controller.execute_query(query, (hall_id, client_id, start_time, 1), transactional=True)
+        return templates.TemplateResponse("success.html", {"request": request})
+    else:
+        return templates.TemplateResponse("payment_failed.html", {"request": request, "hall_id": hall_id, "date": date, "time": time, "client_id": client_id})
+
+
+
 
 if __name__ == "__main__":
     # Запуск FastAPI через uvicorn

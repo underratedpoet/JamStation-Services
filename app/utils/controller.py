@@ -28,14 +28,6 @@ class DBController:
             if transactional and not self.transaction_active:
                 self.transaction_active = True
 
-                    # Обработка параметров: если параметр строковый, добавляем префикс N
-            #processed_params = []
-            #for param in params:
-            #    if isinstance(param, str):
-            #        processed_params.append(f"N'{param}'")  # Добавляем N перед строками
-            #    else:
-            #        processed_params.append(param)
-
             # Выполнение запроса
             result = self.connection.execute(query, params)
 
@@ -670,7 +662,7 @@ class DBController:
 
         query_update = """
         UPDATE Penalties
-        SET written_off = ?
+        SET written_off = CURRENT_TIMESTAMP
         WHERE id = ? AND written_off IS NULL
         """
 
@@ -686,7 +678,7 @@ class DBController:
 
             # Обновляем поле written_off текущим временем
             current_time = datetime.now()
-            self.execute_query(query_update, (current_time, penalty_id), transactional=True)
+            self.execute_query(query_update, (penalty_id), transactional=True)
             self.logger.info(f"Penalty with ID {penalty_id} successfully written off at {current_time}.")
 
             return 0
@@ -715,24 +707,121 @@ class DBController:
             return False
         
     def get_consumables_by_location(self, location_id: int) -> list[Consumable]:
-        rows = self.select(["id", "location", "name", "quantity"], "Consumables", filters={"location_id": location_id})
-        return [Consumable(**dict(row)) for row in rows]
-
-    def add_consumable_quantity(self, consumable_id: int, quantity_to_add: int) -> bool:
+        rows = self.select(["id", "location_id", "name", "price", "quantity"], "Consumables", filters={"location_id": location_id})
+        result = [Consumable(
+            id=row[0],
+            location_id=row[1],
+            name=row[2],
+            price=row[3],
+            quantity=row[4]
+        ) for row in rows]
+        return result
+    def add_consumable_quantity(self, consumable_id: int, quantity_to_add: int):
         """
         Увеличить количество расходников на указанное значение.
         :param consumable_id: ID расходника.
         :param quantity_to_add: Количество для добавления.
-        :return: Успешность операции (True/False).
         """
         query = """
             UPDATE Consumables
             SET quantity = quantity + ?
             WHERE id = ? AND quantity + ? >= 0
         """
-        result = self.connection.execute(query, (quantity_to_add, consumable_id, quantity_to_add))
+        self.execute_query(query, (quantity_to_add, consumable_id, quantity_to_add))
         self.connection.commit()
-        return result.rowcount > 0
 
-    def create_consumable(self, location_id: int, name: str, price: float, quantity: int):
-        self.insert("Consumables", {"location_id":location_id, "name":name, "price":price, "quantity":quantity})
+    def delete_zero_quantity_consumables(self, location_id: int):
+        query = "DELETE FROM Consumables WHERE location_id = ? AND quantity = 0"
+        self.execute_query(query, (location_id,))
+        self.connection.commit()
+
+    def get_keys_status(self, location_id: int) -> list[dict]:
+        query = """
+        SELECT r.id AS room_id, r.name AS room_name, kt.id AS key_id,
+            CASE WHEN kt.id IS NOT NULL OR kt.rental_end_time IS NOT NULL THEN 0 ELSE 1 END AS is_returned
+        FROM Rooms r
+        LEFT JOIN Keys_Transfers kt ON r.id = kt.room_id AND kt.rental_end_time IS NULL
+        WHERE r.location_id = ?
+        """
+        columns = ["room_id", "room_name", "key_id", "is_returned"]
+        return [dict(zip(columns, row)) for row in self.execute_query(query, (location_id,))]
+    
+    def get_today_schedules_by_room(self, room_id: int, location_id: int) -> list[dict]:
+        query = """
+        SELECT s.id, s.start_time, c.name AS client_name
+        FROM Schedules s
+        JOIN Clients c ON s.client_id = c.id
+        JOIN Rooms r ON s.room_id = r.id
+        WHERE r.location_id = ? AND s.room_id = ? 
+            AND s.start_time >= CONVERT(DATE, GETDATE())
+            AND s.status = N'Активно'
+        """
+        columns = ["id", "start_time", "client_name"]
+        return [dict(zip(columns, row)) for row in self.execute_query(query, (location_id, room_id))]
+
+    def get_keys_history(self, location_id: int) -> list[dict]:
+        query = """
+        SELECT kt.rental_start_time AS timestamp, r.name AS room_name,
+            CASE WHEN kt.rental_end_time IS NULL THEN N'Сдан' ELSE N'Возвращён' END AS action,
+            e.id AS employee_id, e.last_name AS employee_name
+        FROM Keys_Transfers kt
+        JOIN Rooms r ON kt.room_id = r.id
+        JOIN Employees e ON kt.employee_id = e.id
+        WHERE r.location_id = ?
+        ORDER BY kt.rental_start_time
+        """
+        columns = ["timestamp", "room_name", "action", "employee_id", "employee_name"]
+        return [dict(zip(columns, row)) for row in self.execute_query(query, (location_id,))]
+
+    def create_key_transfer(self, key_id: int, schedule_id: int, employee_id: int) -> bool:
+        query = """
+        INSERT INTO Keys_Transfers (room_id, schedule_id, employee_id, rental_start_time)
+        SELECT r.id, ?, ?, GETDATE()
+        FROM Rooms r
+        WHERE r.id = (SELECT room_id FROM Schedules WHERE id = ?)
+        """
+        result = self.execute_query(query, (schedule_id, employee_id, schedule_id))
+        self.connection.commit()
+
+    def get_instruments_status(self, location_id: int) -> list[dict]:
+        query = """
+        SELECT i.id AS instrument_id, i.name AS instrument_name,
+            CASE 
+                WHEN r.id IS NULL THEN 0  -- Если записи в Rentals нет, инструмент не в аренде
+                WHEN r.rental_end_time IS NULL THEN 1  -- Если запись есть, но время возврата NULL, инструмент в аренде
+                ELSE 0  -- В других случаях инструмент не в аренде
+            END AS is_rented
+        FROM Instruments i
+        LEFT JOIN Rentals r ON i.id = r.instrument_id AND r.rental_end_time IS NULL
+        WHERE i.location_id = ?
+        """
+        columns = ["instrument_id", "instrument_name", "is_rented"]
+        return [dict(zip(columns, row)) for row in self.execute_query(query, (location_id,))]
+
+
+    def add_rental(self, employee_id: int, instrument_id: int, schedule_id: int):
+        query = """
+        INSERT INTO Rentals (employee_id, instrument_id, schedule_id, rental_start_time)
+        VALUES (?, ?, ?, GETDATE())
+        """
+        self.execute_query(query, (employee_id, instrument_id, schedule_id))
+
+    def return_instrument(self, instrument_id: int):
+        query = """
+        UPDATE Rentals
+        SET rental_end_time = GETDATE()
+        WHERE instrument_id = ? AND rental_end_time IS NULL
+        """
+        self.execute_query(query, (instrument_id,))
+
+    def get_today_schedules(self, location_id: int) -> list[dict]:
+        query = """
+        SELECT s.id AS schedule_id, r.name AS room_name, c.name AS client_name, s.start_time
+        FROM Schedules s
+        JOIN Rooms r ON s.room_id = r.id
+        JOIN Clients c ON s.client_id = c.id
+        WHERE r.location_id = ? AND s.start_time >= CAST(GETDATE() AS DATE) AND s.status = N'Активно'
+        ORDER BY s.start_time
+        """
+        columns = ["schedule_id", "room_name", "client_name", "start_time"]
+        return [dict(zip(columns, row)) for row in self.execute_query(query, (location_id,))]

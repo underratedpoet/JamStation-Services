@@ -8,6 +8,9 @@ from widgets.schedule_tab import ScheduleTab
 from widgets.accounting_tab import EquipmentInstrumentsTab
 from widgets.receipt_tab import ReceiptTab
 from widgets.clients_tab import ClientPenaltiesTab
+from widgets.consumnables_tab import ConsumablesTab
+from widgets.keys_tab import KeysTransfersTab
+from widgets.rent_tab import InstrumentRentalTab
 
 class MainWindow(QMainWindow):
     def __init__(self, db_controller: DBController, employee_id):
@@ -58,6 +61,15 @@ class MainWindow(QMainWindow):
 
             self.clients_tab = ClientPenaltiesTab(location_id=self.location_id, db_controller=self.db_controller)
             self.tab_widget.addTab(self.clients_tab, "Клиенты")
+
+            self.clients_tab = ConsumablesTab(location_id=self.location_id, db_controller=self.db_controller)
+            self.tab_widget.addTab(self.clients_tab, "Товары")
+
+            self.clients_tab = KeysTransfersTab(db_controller=self.db_controller, location_id=self.location_id, employee_id=self.employee_id)
+            self.tab_widget.addTab(self.clients_tab, "Ключи")
+
+            self.clients_tab = InstrumentRentalTab(db_controller=self.db_controller, location_id=self.location_id, employee_id=self.employee_id)
+            self.tab_widget.addTab(self.clients_tab, "Аренда")
 
             self.report_tab = ReportTab(self.db_controller, self.employee_id)
             self.tab_widget.addTab(self.report_tab, "Отчеты")
